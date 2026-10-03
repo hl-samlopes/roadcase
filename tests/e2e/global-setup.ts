@@ -4,7 +4,7 @@ import { hash } from "argon2";
 import pg from "pg";
 import { PrismaClient } from "../../src/generated/prisma/client.ts";
 import { seed } from "../../prisma/seed/run.ts";
-import { accounts, E2E_DATABASE_URL, ids, items } from "./fixtures.ts";
+import { accounts, brandedOrganization, E2E_DATABASE_URL, ids, items } from "./fixtures.ts";
 
 /**
  * Rebuilds the e2e database: create it if needed, apply migrations, wipe all
@@ -56,7 +56,7 @@ export default async function globalSetup() {
 }
 
 async function loadFixtures(prisma: PrismaClient) {
-  const org = await prisma.organization.findFirstOrThrow();
+  const org = await prisma.organization.findFirstOrThrow({ where: { slug: "hume" } });
   const hlk = await prisma.campus.findFirstOrThrow({ where: { code: "HLK" } });
   const hne = await prisma.campus.findFirstOrThrow({ where: { code: "HNE" } });
   const audio = await prisma.category.findFirstOrThrow({ where: { name: "Audio" } });
@@ -135,5 +135,28 @@ async function loadFixtures(prisma: PrismaClient) {
   await user(accounts.toDeactivate, "Soon Deactivated", {
     level: "VIEWER",
     scopeType: "ORGANIZATION",
+  });
+  await user(accounts.preferences, "Preference Tester", {
+    level: "VIEWER",
+    scopeType: "ORGANIZATION",
+  });
+  await user(accounts.campusSwitcher, "Campus Switcher", {
+    level: "VIEWER",
+    scopeType: "ORGANIZATION",
+  });
+
+  await prisma.organization.create({
+    data: {
+      slug: brandedOrganization.slug,
+      name: brandedOrganization.name,
+      branding: {
+        create: {
+          displayName: brandedOrganization.displayName,
+          signInHeadline: brandedOrganization.signInHeadline,
+          signInMessage: brandedOrganization.signInMessage,
+          lightTokens: { accent: brandedOrganization.lightAccent },
+        },
+      },
+    },
   });
 }

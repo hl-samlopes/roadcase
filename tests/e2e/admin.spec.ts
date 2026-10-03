@@ -5,6 +5,7 @@ import { signIn } from "./helpers.ts";
 test("an admin creates a campus-scoped user who sees only that campus", async ({ browser }) => {
   const adminPage = await (await browser.newContext()).newPage();
   await signIn(adminPage, accounts.admin);
+  await adminPage.getByRole("link", { name: "Settings" }).click();
   await adminPage.getByRole("link", { name: "Users" }).click();
   await adminPage.getByRole("link", { name: "New user" }).click();
 
@@ -32,7 +33,7 @@ test("deactivating a user signs them out and blocks sign-in", async ({ browser }
 
   const adminPage = await (await browser.newContext()).newPage();
   await signIn(adminPage, accounts.admin);
-  await adminPage.goto("/admin/users");
+  await adminPage.goto("/settings/users");
   await adminPage.getByRole("link", { name: "Manage Soon Deactivated" }).click();
   await adminPage.getByRole("button", { name: "Deactivate account" }).click();
   await expect(adminPage.getByText("Done: Account deactivated and signed out.")).toBeVisible();

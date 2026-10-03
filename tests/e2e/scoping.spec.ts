@@ -24,9 +24,9 @@ test.describe("an editor scoped to Meadow Ranch", () => {
     await expect(page.getByText(items.hne.name)).toHaveCount(0);
   });
 
-  test("cannot open user administration", async ({ page }) => {
-    await expect(page.getByRole("link", { name: "Users" })).toHaveCount(0);
-    const response = await page.goto("/admin/users");
-    expect(response?.status()).toBe(404);
+  test("cannot open settings or user administration", async ({ page }) => {
+    await expect(page.getByRole("link", { name: "Settings" })).toHaveCount(0);
+    expect((await page.goto("/settings"))?.status()).toBe(404);
+    expect((await page.goto("/settings/users"))?.status()).toBe(404);
   });
 });

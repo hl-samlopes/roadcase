@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { accounts } from "./fixtures.ts";
-import { signIn } from "./helpers.ts";
+import { signIn, signOut } from "./helpers.ts";
 
 test("signed-out visitors are sent to sign-in", async ({ page }) => {
   await page.goto("/items");
@@ -24,9 +24,9 @@ test("usernames are case-insensitive and sign-out ends the session", async ({ pa
     ...accounts.meadowRanchEditor,
     username: accounts.meadowRanchEditor.username.toUpperCase(),
   });
-  await expect(page.getByText("Signed in as Meadow Ranch Editor")).toBeVisible();
-  await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByText("Account menu for")).toBeAttached();
+  await expect(page.locator("summary", { hasText: "Meadow Ranch Editor" })).toBeVisible();
+  await signOut(page);
   await page.goto("/items");
   await expect(page).toHaveURL(/\/sign-in$/);
 });

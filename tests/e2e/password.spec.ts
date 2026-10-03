@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { accounts } from "./fixtures.ts";
-import { signIn } from "./helpers.ts";
+import { openUserMenu, signIn } from "./helpers.ts";
 
 test("changing a password keeps this device signed in and signs out others", async ({
   browser,
@@ -13,6 +13,7 @@ test("changing a password keeps this device signed in and signs out others", asy
 
   const page = await (await browser.newContext()).newPage();
   await signIn(page, account);
+  await openUserMenu(page);
   await page.getByRole("link", { name: "Change password" }).click();
 
   await page.getByLabel("Current password").fill("wrong-current-password");

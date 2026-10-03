@@ -24,4 +24,16 @@ export const accounts = {
   meadowRanchEditor: { username: "mr-editor", password: "e2e-mr-editor-pass-1" },
   passwordChanger: { username: "pw-changer", password: "e2e-pw-changer-pass-1" },
   toDeactivate: { username: "to-deactivate", password: "e2e-deactivate-pass-1" },
+  preferences: { username: "prefs-user", password: "e2e-prefs-user-pass-1" },
+  campusSwitcher: { username: "campus-user", password: "e2e-campus-user-pass-1" },
+};
+
+/** A second organization with its own branding, for sign-in branding tests. */
+export const brandedOrganization = {
+  slug: "northwind",
+  name: "Northwind Camps",
+  displayName: "Northwind Production",
+  signInHeadline: "Welcome to Northwind",
+  signInMessage: "Use your staff account to sign in.",
+  lightAccent: "#7A1FA2",
 };

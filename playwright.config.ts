@@ -25,6 +25,8 @@ export default defineConfig({
       NEXT_DIST_DIR: ".next-e2e",
       AUTH_SECRET: "e2e-only-secret-not-used-anywhere-else-000000",
       AUTH_TRUST_HOST: "true",
+      // Two organizations exist in the e2e data; plain /sign-in uses this one.
+      DEFAULT_ORGANIZATION_SLUG: "hume",
     },
   },
 });
