@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/authz";
 import { getItem } from "@/lib/data/items";
 import { conditionLabels } from "@/lib/labels";
 
-export const metadata: Metadata = { title: "Item · Roadcase" };
+export const metadata: Metadata = { title: "Item" };
 
 export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
   const user = await requireUser();

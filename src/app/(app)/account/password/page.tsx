@@ -4,7 +4,7 @@ import { Card, PageHeader, TextField } from "@/components/ui";
 import { requireUser } from "@/lib/authz";
 import { changePasswordAction } from "./actions";
 
-export const metadata: Metadata = { title: "Change password · Roadcase" };
+export const metadata: Metadata = { title: "Change password" };
 
 export default async function ChangePasswordPage({ searchParams }: PageProps<"/account/password">) {
   await requireUser();

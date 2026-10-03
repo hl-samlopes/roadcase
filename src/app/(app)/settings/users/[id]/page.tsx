@@ -22,12 +22,12 @@ import {
   updateProfileAction,
 } from "../actions";
 
-export const metadata: Metadata = { title: "Manage user · Roadcase" };
+export const metadata: Metadata = { title: "Manage user" };
 
 export default async function ManageUserPage({
   params,
   searchParams,
-}: PageProps<"/admin/users/[id]">) {
+}: PageProps<"/settings/users/[id]">) {
   const actor = await requireUser();
   const { id } = await params;
   const { created } = await searchParams;
@@ -63,7 +63,7 @@ export default async function ManageUserPage({
   return (
     <div className="flex max-w-2xl flex-col gap-4">
       <div>
-        <Link href="/admin/users" className="text-accent hover:underline">
+        <Link href="/settings/users" className="text-accent hover:underline">
           Back to users
         </Link>
       </div>

@@ -2,18 +2,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/authz";
+import { getCampusContext } from "@/lib/data/campuses";
 import { listItems } from "@/lib/data/items";
 import { conditionLabels } from "@/lib/labels";
 
-export const metadata: Metadata = { title: "Inventory · Roadcase" };
+export const metadata: Metadata = { title: "Inventory" };
 
 export default async function ItemsPage() {
   const user = await requireUser();
-  const items = await listItems(user);
+  const { active } = await getCampusContext(user);
+  const items = await listItems(user, active?.id ?? null);
 
   return (
     <>
-      <PageHeader title="Inventory" />
+      <PageHeader title="Inventory">
+        <p className="text-muted">
+          Showing {active ? `${active.name} (${active.code})` : "all campuses"}
+        </p>
+      </PageHeader>
       {items.length === 0 ? (
         <p className="text-muted">No equipment you have access to yet.</p>
       ) : (

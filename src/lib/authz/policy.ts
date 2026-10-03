@@ -185,3 +185,39 @@ export function canManageUser(
   if (!isAnyAdmin(actor) || target.organizationId !== actor.organizationId) return false;
   return target.grants.every((grant) => canManageGrantScope(actor, grant));
 }
+
+/**
+ * Campuses where the actor can see at least some equipment, for the campus
+ * switcher. Data access is still filtered by scopeWhere; this only decides
+ * which campuses are offered.
+ */
+export function computeAccessibleCampusIds(
+  grants: Grant[],
+  lookup: {
+    allCampusIds: string[];
+    locationCampus: Map<string, string>;
+    departmentCampuses: Map<string, string[]>;
+  },
+): string[] {
+  const ids = new Set<string>();
+  for (const grant of grants) {
+    switch (grant.scopeType) {
+      case "ORGANIZATION":
+        return [...lookup.allCampusIds];
+      case "CAMPUS":
+        if (grant.campusId) ids.add(grant.campusId);
+        break;
+      case "LOCATION": {
+        const campusId = grant.locationId ? lookup.locationCampus.get(grant.locationId) : undefined;
+        if (campusId) ids.add(campusId);
+        break;
+      }
+      case "DEPARTMENT":
+        for (const campusId of lookup.departmentCampuses.get(grant.departmentId ?? "") ?? []) {
+          ids.add(campusId);
+        }
+        break;
+    }
+  }
+  return lookup.allCampusIds.filter((id) => ids.has(id));
+}

@@ -7,7 +7,7 @@ import { canManageUser, isAnyAdmin, requireUser } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { levelLabels } from "@/lib/labels";
 
-export const metadata: Metadata = { title: "Users · Roadcase" };
+export const metadata: Metadata = { title: "Users" };
 
 export default async function UsersPage() {
   const actor = await requireUser();
@@ -31,7 +31,7 @@ export default async function UsersPage() {
   return (
     <>
       <PageHeader title="Users">
-        <Link href="/admin/users/new" className={buttonClass("primary")}>
+        <Link href="/settings/users/new" className={buttonClass("primary")}>
           New user
         </Link>
       </PageHeader>
@@ -78,7 +78,10 @@ export default async function UsersPage() {
                 <td className="p-2">{user.isActive ? "Active" : "Deactivated"}</td>
                 <td className="p-2">
                   {manageable ? (
-                    <Link href={`/admin/users/${user.id}`} className="text-accent hover:underline">
+                    <Link
+                      href={`/settings/users/${user.id}`}
+                      className="text-accent hover:underline"
+                    >
                       Manage<span className="sr-only"> {user.displayName}</span>
                     </Link>
                   ) : null}

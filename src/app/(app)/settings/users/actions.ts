@@ -87,8 +87,8 @@ function isUniqueViolation(error: unknown) {
 }
 
 function refresh(userId?: string) {
-  revalidatePath("/admin/users");
-  if (userId) revalidatePath(`/admin/users/${userId}`);
+  revalidatePath("/settings/users");
+  if (userId) revalidatePath(`/settings/users/${userId}`);
 }
 
 export async function createUserAction(_state: FormState, formData: FormData): Promise<FormState> {
@@ -159,7 +159,7 @@ export async function createUserAction(_state: FormState, formData: FormData): P
   }
 
   refresh();
-  redirect(`/admin/users/${userId}?created=1`);
+  redirect(`/settings/users/${userId}?created=1`);
 }
 
 export async function updateProfileAction(

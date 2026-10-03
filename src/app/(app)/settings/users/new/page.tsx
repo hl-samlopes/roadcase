@@ -7,7 +7,7 @@ import { manageableScopeOptions } from "@/lib/admin/scopes";
 import { isAnyAdmin, requireUser } from "@/lib/authz";
 import { createUserAction } from "../actions";
 
-export const metadata: Metadata = { title: "New user · Roadcase" };
+export const metadata: Metadata = { title: "New user" };
 
 export default async function NewUserPage() {
   const actor = await requireUser();

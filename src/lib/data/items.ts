@@ -20,11 +20,19 @@ const itemSelect = {
   subcategory: { select: { name: true } },
 } as const;
 
-/** Items the actor may read. Step 4 adds search, filters and pagination. */
-export async function listItems(actor: Actor) {
+/**
+ * Items the actor may read, optionally limited to one campus. Step 4 adds
+ * search, filters and pagination.
+ */
+export async function listItems(actor: Actor, campusId: string | null = null) {
   const where = scopeWhere(actor, "item:read");
   if (!where) return [];
-  return db.item.findMany({ where, select: itemSelect, orderBy: { code: "asc" }, take: 200 });
+  return db.item.findMany({
+    where: campusId ? { AND: [where, { campusId }] } : where,
+    select: itemSelect,
+    orderBy: { code: "asc" },
+    take: 200,
+  });
 }
 
 /**
