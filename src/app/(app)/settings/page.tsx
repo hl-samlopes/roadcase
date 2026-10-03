@@ -14,6 +14,12 @@ const sections = [
     organizationAdminOnly: false,
   },
   {
+    href: "/settings/locations",
+    title: "Locations and departments",
+    description: "Camps and venues on each campus, and where each department keeps equipment.",
+    organizationAdminOnly: false,
+  },
+  {
     href: "/settings/conditions",
     title: "Item conditions",
     description: "The conditions equipment can be in, and which start repair tickets.",
