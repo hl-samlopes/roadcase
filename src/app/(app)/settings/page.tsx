@@ -20,6 +20,12 @@ const sections = [
     organizationAdminOnly: false,
   },
   {
+    href: "/settings/fields",
+    title: "Inventory fields",
+    description: "Custom fields on every item, such as serial number or wattage.",
+    organizationAdminOnly: true,
+  },
+  {
     href: "/settings/conditions",
     title: "Item conditions",
     description: "The conditions equipment can be in, and which start repair tickets.",

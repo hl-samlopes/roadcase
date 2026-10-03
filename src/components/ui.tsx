@@ -1,4 +1,9 @@
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import type {
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from "react";
 
 /**
  * Small building blocks styled only with theme tokens. Step 3 replaces the
@@ -33,6 +38,23 @@ export function TextField({
         {label}
       </label>
       <input id={id} className={controlClass} {...props} />
+      {hint ? <p className="text-muted">{hint}</p> : null}
+    </div>
+  );
+}
+
+export function TextAreaField({
+  label,
+  hint,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; name: string; hint?: string }) {
+  const id = props.id ?? `field-${props.name}`;
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="font-semibold">
+        {label}
+      </label>
+      <textarea id={id} rows={4} className={controlClass} {...props} />
       {hint ? <p className="text-muted">{hint}</p> : null}
     </div>
   );
