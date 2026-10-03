@@ -1,0 +1,599 @@
+// Roadcase data model.
+//
+// Hierarchy: Organization > Campus > Location > Department (departments are
+// organization-wide and linked to the locations they own equipment in).
+// Equipment records (Item, ServiceTicket, ServiceLog) carry organization,
+// campus, location and department ids so authorization can filter in one place.
+// Composite foreign keys keep those denormalized ids consistent.
+//
+// Every schema change is a migration: `npx prisma migrate dev --name <change>`.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum PermissionLevel {
+  VIEWER
+  COMMENTER
+  EDITOR
+  ADMIN
+}
+
+enum ScopeType {
+  ORGANIZATION
+  CAMPUS
+  LOCATION
+  DEPARTMENT
+}
+
+enum ItemCondition {
+  NEW
+  GOOD
+  FAIR
+  POOR
+  NEEDS_REPAIR
+  OUT_OF_SERVICE
+  RETIRED
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  DATE
+  DROPDOWN
+  CHECKBOX
+}
+
+enum AttachmentKind {
+  PHOTO
+  DOCUMENT
+}
+
+enum TicketStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  WAITING_ON_PARTS_OR_VENDOR
+  COMPLETED
+  CANCELLED
+}
+
+enum AssigneeType {
+  USER
+  DEPARTMENT
+  VENDOR
+}
+
+enum TicketEventType {
+  CREATED
+  STATUS_CHANGED
+  ASSIGNED
+  COMMENT
+  ATTACHMENT_ADDED
+}
+
+enum ThemeMode {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum HeadingFont {
+  INTER
+  SPACE_MONO
+}
+
+enum BodyFont {
+  KRUB
+  PLUS_JAKARTA_SANS
+}
+
+enum FontPairing {
+  INTER_KRUB
+  SPACE_MONO_PLUS_JAKARTA_SANS
+}
+
+enum SignInLogoPlacement {
+  TOP
+  CENTER
+  HIDDEN
+}
+
+// ---------------------------------------------------------------------------
+// Organization structure
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  branding         OrganizationBranding?
+  campuses         Campus[]
+  locations        Location[]
+  departments      Department[]
+  users            User[]
+  permissionGrants PermissionGrant[]
+  categories       Category[]
+  fieldDefinitions FieldDefinition[]
+  items            Item[]
+  attachments      Attachment[]
+  serviceTickets   ServiceTicket[]
+  serviceLogs      ServiceLog[]
+  rfidTags         RfidTag[]
+}
+
+model Campus {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  /// Short code used as the item code prefix, e.g. "HNE" in HNE-000123.
+  code           String
+  name           String
+  /// Last item number issued for this campus; incremented atomically.
+  itemSequence   Int       @default(0)
+  archivedAt     DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  locations        Location[]
+  items            Item[]
+  serviceTickets   ServiceTicket[]
+  serviceLogs      ServiceLog[]
+  permissionGrants PermissionGrant[]
+  userPreferences  UserPreference[]
+
+  @@unique([organizationId, code])
+  @@unique([id, organizationId])
+}
+
+/// A camp or venue within a campus, e.g. Meadow Ranch at HLK.
+model Location {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  campusId       String    @db.Uuid
+  name           String
+  code           String?
+  archivedAt     DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  organization     Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  campus           Campus               @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  departments      DepartmentLocation[]
+  items            Item[]
+  serviceTickets   ServiceTicket[]
+  serviceLogs      ServiceLog[]
+  permissionGrants PermissionGrant[]
+
+  @@unique([campusId, name])
+  @@unique([id, campusId])
+}
+
+/// A functional group (Production, Food Service) that spans campuses.
+model Department {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  name           String
+  archivedAt     DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  organization     Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  locations        DepartmentLocation[]
+  items            Item[]
+  serviceTickets   ServiceTicket[]      @relation("TicketDepartment")
+  assignedTickets  ServiceTicket[]      @relation("TicketAssigneeDepartment")
+  serviceLogs      ServiceLog[]
+  permissionGrants PermissionGrant[]
+
+  @@unique([organizationId, name])
+}
+
+/// Links a department to a location it owns equipment in.
+model DepartmentLocation {
+  departmentId String   @db.Uuid
+  locationId   String   @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  location   Location   @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  items      Item[]
+
+  @@id([departmentId, locationId])
+  @@index([locationId])
+}
+
+// ---------------------------------------------------------------------------
+// Accounts and permissions
+// ---------------------------------------------------------------------------
+
+model User {
+  id                String    @id @default(uuid(7)) @db.Uuid
+  organizationId    String    @db.Uuid
+  /// Stored lowercase; unique within the organization.
+  username          String
+  /// argon2id hash. Never log or return this.
+  passwordHash      String
+  displayName       String
+  /// Stored lowercase.
+  email             String
+  /// Job title or role description. Access comes only from permission grants.
+  role              String?
+  isActive          Boolean   @default(true)
+  passwordChangedAt DateTime? @db.Timestamptz(3)
+  lastSignInAt      DateTime? @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+
+  organization       Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  preference         UserPreference?
+  grants             PermissionGrant[]      @relation("GrantUser")
+  grantsCreated      PermissionGrant[]      @relation("GrantCreatedBy")
+  itemsCreated       Item[]                 @relation("ItemCreatedBy")
+  itemsUpdated       Item[]                 @relation("ItemUpdatedBy")
+  attachments        Attachment[]
+  ticketsReported    ServiceTicket[]        @relation("TicketReporter")
+  ticketsAssigned    ServiceTicket[]        @relation("TicketAssigneeUser")
+  ticketEvents       TicketEvent[]
+  serviceLogsCreated ServiceLog[]
+  brandingUpdates    OrganizationBranding[]
+
+  @@unique([organizationId, username])
+  @@unique([organizationId, email])
+}
+
+/// A permission level granted for one scope. Exactly one scope id matches the
+/// scope type (enforced by a CHECK constraint); organization-wide grants have none.
+model PermissionGrant {
+  id               String          @id @default(uuid(7)) @db.Uuid
+  organizationId   String          @db.Uuid
+  userId           String          @db.Uuid
+  level            PermissionLevel
+  scopeType        ScopeType
+  campusId         String?         @db.Uuid
+  locationId       String?         @db.Uuid
+  departmentId     String?         @db.Uuid
+  /// Lets a viewer submit service tickets in this scope (commenters and above
+  /// can always submit).
+  canSubmitTickets Boolean         @default(false)
+  createdById      String?         @db.Uuid
+  createdAt        DateTime        @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user         User         @relation("GrantUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation("GrantCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  campus       Campus?      @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  location     Location?    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Inventory
+// ---------------------------------------------------------------------------
+
+model Category {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  name           String
+  position       Int       @default(0)
+  archivedAt     DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  subcategories Subcategory[]
+  items         Item[]
+
+  @@unique([organizationId, name])
+}
+
+model Subcategory {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  categoryId String    @db.Uuid
+  name       String
+  position   Int       @default(0)
+  archivedAt DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  items    Item[]
+
+  @@unique([categoryId, name])
+  @@unique([id, categoryId])
+}
+
+/// Admin-configured inventory field. Values live in Item.customFields under
+/// `key`, which never changes after creation so renames keep their data.
+/// Deleting a field sets archivedAt; existing values are kept.
+model FieldDefinition {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  key            String
+  label          String
+  type           FieldType
+  required       Boolean   @default(false)
+  /// Choices for DROPDOWN fields, as a JSON array of strings.
+  options        Json?
+  position       Int       @default(0)
+  archivedAt     DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, key])
+}
+
+model Item {
+  id               String        @id @default(uuid(7)) @db.Uuid
+  organizationId   String        @db.Uuid
+  campusId         String        @db.Uuid
+  locationId       String        @db.Uuid
+  departmentId     String        @db.Uuid
+  /// Unique code printed on the Code 128 label, e.g. HNE-000123.
+  code             String
+  name             String
+  categoryId       String        @db.Uuid
+  subcategoryId    String?       @db.Uuid
+  condition        ItemCondition @default(GOOD)
+  notes            String?
+  price            Decimal?      @db.Decimal(12, 2)
+  /// Values for FieldDefinitions, keyed by FieldDefinition.key.
+  customFields     Json          @default("{}")
+  primaryPhotoId   String?       @unique @db.Uuid
+  createdById      String?       @db.Uuid
+  updatedById      String?       @db.Uuid
+  /// MaintainX asset link (Phase 2).
+  maintainxAssetId String?
+  createdAt        DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime      @updatedAt @db.Timestamptz(3)
+
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  campus             Campus             @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  location           Location           @relation(fields: [locationId, campusId], references: [id, campusId], onDelete: Restrict)
+  department         Department         @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  departmentLocation DepartmentLocation @relation(fields: [departmentId, locationId], references: [departmentId, locationId], onDelete: Restrict)
+  category           Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  subcategory        Subcategory?       @relation(fields: [subcategoryId, categoryId], references: [id, categoryId], onDelete: Restrict)
+  primaryPhoto       Attachment?        @relation("ItemPrimaryPhoto", fields: [primaryPhotoId], references: [id], onDelete: SetNull)
+  createdBy          User?              @relation("ItemCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy          User?              @relation("ItemUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  attachments        Attachment[]       @relation("ItemAttachments")
+  serviceTickets     ServiceTicket[]
+  serviceLogs        ServiceLog[]
+  rfidTags           RfidTag[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, maintainxAssetId])
+  @@index([campusId, locationId])
+  @@index([departmentId])
+  @@index([categoryId, subcategoryId])
+  @@index([condition])
+}
+
+/// A photo or document stored in S3-compatible storage. Belongs to exactly one
+/// of item, ticket or service log (CHECK constraint) and inherits its scope.
+model Attachment {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  organizationId String         @db.Uuid
+  kind           AttachmentKind
+  storageKey     String         @unique
+  fileName       String
+  contentType    String
+  sizeBytes      Int
+  itemId         String?        @db.Uuid
+  ticketId       String?        @db.Uuid
+  serviceLogId   String?        @db.Uuid
+  uploadedById   String?        @db.Uuid
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  item            Item?          @relation("ItemAttachments", fields: [itemId], references: [id], onDelete: Cascade)
+  ticket          ServiceTicket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  serviceLog      ServiceLog?    @relation(fields: [serviceLogId], references: [id], onDelete: Cascade)
+  uploadedBy      User?          @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  primaryPhotoFor Item?          @relation("ItemPrimaryPhoto")
+  ticketEvents    TicketEvent[]
+
+  @@index([itemId])
+  @@index([ticketId])
+  @@index([serviceLogId])
+}
+
+/// RFID tags reserved for a later phase; no UI uses this yet.
+model RfidTag {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  itemId         String?  @db.Uuid
+  /// Tag identifier as read from the tag (EPC or vendor id).
+  tagValue       String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  item         Item?        @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, tagValue])
+  @@index([itemId])
+}
+
+// ---------------------------------------------------------------------------
+// Service tickets and logs
+// ---------------------------------------------------------------------------
+
+/// A repair work order. Scope ids are copied from the item when the ticket is
+/// opened. Shaped to map onto a MaintainX work order (Phase 2).
+model ServiceTicket {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @db.Uuid
+  campusId       String       @db.Uuid
+  locationId     String       @db.Uuid
+  departmentId   String       @db.Uuid
+  itemId         String       @db.Uuid
+  title          String
+  description    String?
+  status         TicketStatus @default(OPEN)
+  reporterId     String?      @db.Uuid
+
+  /// Who does the work: an internal user, another department, or an outside
+  /// company. Columns must match assigneeType (CHECK constraint).
+  assigneeType         AssigneeType?
+  assigneeUserId       String?       @db.Uuid
+  assigneeDepartmentId String?       @db.Uuid
+  vendorName           String?
+  vendorContact        String?
+
+  maintainxWorkOrderId String?
+  maintainxSyncedAt    DateTime? @db.Timestamptz(3)
+  completedAt          DateTime? @db.Timestamptz(3)
+  cancelledAt          DateTime? @db.Timestamptz(3)
+  createdAt            DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
+
+  organization       Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  campus             Campus        @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  location           Location      @relation(fields: [locationId, campusId], references: [id, campusId], onDelete: Restrict)
+  department         Department    @relation("TicketDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
+  item               Item          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  reporter           User?         @relation("TicketReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  assigneeUser       User?         @relation("TicketAssigneeUser", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  assigneeDepartment Department?   @relation("TicketAssigneeDepartment", fields: [assigneeDepartmentId], references: [id], onDelete: SetNull)
+  events             TicketEvent[]
+  attachments        Attachment[]
+  serviceLog         ServiceLog?
+
+  @@unique([organizationId, maintainxWorkOrderId])
+  @@index([campusId, departmentId, status])
+  @@index([itemId])
+}
+
+/// Timeline entry on a ticket: actions, comments and attachments.
+model TicketEvent {
+  id           String          @id @default(uuid(7)) @db.Uuid
+  ticketId     String          @db.Uuid
+  actorId      String?         @db.Uuid
+  type         TicketEventType
+  fromStatus   TicketStatus?
+  toStatus     TicketStatus?
+  body         String?
+  attachmentId String?         @db.Uuid
+  /// Extra structured detail, e.g. the previous and new assignee.
+  data         Json?
+  createdAt    DateTime        @default(now()) @db.Timestamptz(3)
+
+  ticket     ServiceTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor      User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  attachment Attachment?   @relation(fields: [attachmentId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt])
+}
+
+/// The final record of service on an item; created automatically when a
+/// ticket completes, or entered directly.
+model ServiceLog {
+  id                   String   @id @default(uuid(7)) @db.Uuid
+  organizationId       String   @db.Uuid
+  campusId             String   @db.Uuid
+  locationId           String   @db.Uuid
+  departmentId         String   @db.Uuid
+  itemId               String   @db.Uuid
+  ticketId             String?  @unique @db.Uuid
+  serviceDate          DateTime @db.Date
+  serviceType          String
+  cost                 Decimal? @db.Decimal(12, 2)
+  notes                String?
+  createdById          String?  @db.Uuid
+  maintainxWorkOrderId String?
+  createdAt            DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime @updatedAt @db.Timestamptz(3)
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  campus       Campus         @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  location     Location       @relation(fields: [locationId, campusId], references: [id, campusId], onDelete: Restrict)
+  department   Department     @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  item         Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  ticket       ServiceTicket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  createdBy    User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  attachments  Attachment[]
+
+  @@index([campusId, departmentId, serviceDate])
+  @@index([itemId, serviceDate])
+}
+
+// ---------------------------------------------------------------------------
+// Appearance
+// ---------------------------------------------------------------------------
+
+/// Organization branding. Null fields fall back to the Roadcase (Concept A)
+/// defaults, so "reset to defaults" clears them. Image fields hold storage keys.
+model OrganizationBranding {
+  organizationId String @id @db.Uuid
+
+  /// Name shown in the header, emails and contract PDFs.
+  displayName  String?
+  logoLightKey String?
+  logoDarkKey  String?
+  faviconKey   String?
+
+  /// Partial overrides of the theme tokens (bg, surface, text, muted, border,
+  /// accent, warn, bad) as a JSON object of #RRGGBB strings.
+  lightTokens Json?
+  darkTokens  Json?
+  headingFont HeadingFont?
+  bodyFont    BodyFont?
+  /// Corner radius in px (default 6; 0 is the square-corner variant).
+  radiusPx    Int?
+
+  appBackgroundKey    String?
+  /// Overlay opacity over the app background, 0 to 100.
+  appBackgroundDim    Int?
+  signInBackgroundKey String?
+  signInBackgroundDim Int?
+  signInHeadline      String?
+  signInMessage       String?
+  signInLogoPlacement SignInLogoPlacement @default(TOP)
+
+  /// What users may change for themselves.
+  allowUserAccent     Boolean       @default(true)
+  /// Accent choices offered to users (#RRGGBB); empty means any accent.
+  allowedAccents      String[]      @default([])
+  allowedFontPairings FontPairing[] @default([INTER_KRUB, SPACE_MONO_PLUS_JAKARTA_SANS])
+
+  updatedById String?  @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  updatedBy    User?        @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+/// Per-user appearance and UI choices, limited by the organization branding.
+model UserPreference {
+  userId         String       @id @db.Uuid
+  themeMode      ThemeMode    @default(LIGHT)
+  /// #RRGGBB accent override; null uses the organization accent.
+  accent         String?
+  fontPairing    FontPairing?
+  /// Campus selected in the campus switcher.
+  activeCampusId String?      @db.Uuid
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activeCampus Campus? @relation(fields: [activeCampusId], references: [id], onDelete: SetNull)
+}
