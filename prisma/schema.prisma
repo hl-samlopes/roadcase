@@ -234,6 +234,9 @@ model User {
   /// Job title or role description. Access comes only from permission grants.
   role              String?
   isActive          Boolean   @default(true)
+  /// Bumped on password change, reset or deactivation; sessions issued with an
+  /// older value are rejected.
+  sessionVersion    Int       @default(0)
   passwordChangedAt DateTime? @db.Timestamptz(3)
   lastSignInAt      DateTime? @db.Timestamptz(3)
   createdAt         DateTime  @default(now()) @db.Timestamptz(3)
