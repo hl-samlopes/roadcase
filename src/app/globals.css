@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+/*
+ * Roadcase default theme tokens (Concept A "Utility").
+ * Components must read colors, fonts and radius from these variables only;
+ * organization branding and user preferences override them at runtime.
+ */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #14181f;
+  --muted: #566070;
+  --border: #dde1e8;
+  --accent: #1b5fd1;
+  --warn: #8a5a00;
+  --bad: #b3361b;
+  --radius: 6px;
+  --font-heading: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-krub), ui-sans-serif, system-ui, sans-serif;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0f1319;
+  --surface: #171c24;
+  --text: #edf0f5;
+  --muted: #9aa5b5;
+  --border: #2a313c;
+  --accent: #6ea2ff;
+  --warn: #f0b84a;
+  --bad: #ff8a6b;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1319;
+    --surface: #171c24;
+    --text: #edf0f5;
+    --muted: #9aa5b5;
+    --border: #2a313c;
+    --accent: #6ea2ff;
+    --warn: #f0b84a;
+    --bad: #ff8a6b;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --radius-theme: var(--radius);
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
