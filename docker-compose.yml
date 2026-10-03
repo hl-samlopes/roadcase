@@ -1,0 +1,46 @@
+name: roadcase
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: roadcase
+      POSTGRES_PASSWORD: roadcase
+      POSTGRES_DB: roadcase
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roadcase -d roadcase"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # The official minio/minio images are no longer published; Chainguard ships
+  # a maintained build of the same server.
+  minio:
+    image: chainguard/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: roadcase
+      MINIO_ROOT_PASSWORD: roadcase-dev-secret
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+
+  # Creates the attachments bucket, retrying until MinIO accepts connections.
+  minio-init:
+    image: chainguard/minio-client:latest
+    depends_on:
+      - minio
+    environment:
+      MC_HOST_local: http://roadcase:roadcase-dev-secret@minio:9000
+    command: ["mb", "--ignore-existing", "local/roadcase"]
+    restart: on-failure
+
+volumes:
+  postgres-data:
+  minio-data:
