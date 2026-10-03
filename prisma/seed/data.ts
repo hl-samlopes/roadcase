@@ -37,3 +37,18 @@ export const categories: { name: string; subcategories: string[] }[] = [
     subcategories: ["Audio cables", "Power cables", "DMX cables", "Video cables", "Network cables"],
   },
 ];
+
+/** Starting item conditions; organizations edit these in Settings. */
+export const itemConditions: {
+  label: string;
+  isDefault?: boolean;
+  startsRepairTicket?: boolean;
+}[] = [
+  { label: "New" },
+  { label: "Good", isDefault: true },
+  { label: "Fair" },
+  { label: "Poor" },
+  { label: "Needs repair", startsRepairTicket: true },
+  { label: "Out of service" },
+  { label: "Retired" },
+];

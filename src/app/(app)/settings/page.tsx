@@ -2,27 +2,41 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, PageHeader } from "@/components/ui";
-import { isAnyAdmin, requireUser } from "@/lib/authz";
+import { can, isAnyAdmin, requireUser } from "@/lib/authz";
 
 export const metadata: Metadata = { title: "Settings" };
 
 const sections = [
-  { href: "/settings/users", title: "Users", description: "Accounts, access levels and scopes." },
+  {
+    href: "/settings/users",
+    title: "Users",
+    description: "Accounts, access levels and scopes.",
+    organizationAdminOnly: false,
+  },
+  {
+    href: "/settings/conditions",
+    title: "Item conditions",
+    description: "The conditions equipment can be in, and which start repair tickets.",
+    organizationAdminOnly: true,
+  },
   {
     href: "/settings/appearance",
     title: "Appearance",
     description: "Organization colors, fonts, logos and sign-in page.",
+    organizationAdminOnly: true,
   },
 ];
 
 export default async function SettingsPage() {
   const user = await requireUser();
   if (!isAnyAdmin(user)) notFound();
+  const organizationAdmin = can(user, "settings:manage", { organizationId: user.organizationId });
+  const visible = sections.filter((s) => organizationAdmin || !s.organizationAdminOnly);
   return (
     <>
       <PageHeader title="Settings" />
       <div className="grid gap-3 md:grid-cols-2">
-        {sections.map((section) => (
+        {visible.map((section) => (
           <Card key={section.href}>
             <h2 className="text-base">
               <Link href={section.href} className="text-accent hover:underline">

@@ -11,7 +11,7 @@ const itemSelect = {
   departmentId: true,
   code: true,
   name: true,
-  condition: true,
+  condition: { select: { id: true, label: true } },
   notes: true,
   campus: { select: { code: true, name: true } },
   location: { select: { name: true } },

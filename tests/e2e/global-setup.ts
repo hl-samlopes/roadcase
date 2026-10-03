@@ -60,6 +60,9 @@ async function loadFixtures(prisma: PrismaClient) {
   const hlk = await prisma.campus.findFirstOrThrow({ where: { code: "HLK" } });
   const hne = await prisma.campus.findFirstOrThrow({ where: { code: "HNE" } });
   const audio = await prisma.category.findFirstOrThrow({ where: { name: "Audio" } });
+  const good = await prisma.itemCondition.findFirstOrThrow({
+    where: { organizationId: org.id, isDefault: true },
+  });
   const organizationId = org.id;
 
   await prisma.location.createMany({
@@ -87,6 +90,7 @@ async function loadFixtures(prisma: PrismaClient) {
         locationId: ids.meadowRanch,
         departmentId: ids.production,
         categoryId: audio.id,
+        conditionId: good.id,
       },
       {
         ...items.hne,
@@ -95,6 +99,7 @@ async function loadFixtures(prisma: PrismaClient) {
         locationId: ids.hneMain,
         departmentId: ids.production,
         categoryId: audio.id,
+        conditionId: good.id,
       },
     ],
   });

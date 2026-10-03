@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { campuses, categories, organization } from "./data.ts";
+import { campuses, categories, itemConditions, organization } from "./data.ts";
 import { parseSeedEnv } from "./env.ts";
 
 const validEnv = {
@@ -26,6 +26,15 @@ describe("seed data", () => {
       expect(category.subcategories.length).toBeGreaterThan(0);
       expect(new Set(category.subcategories).size).toBe(category.subcategories.length);
     }
+  });
+
+  it("has unique item conditions with one default and one that starts repair tickets", () => {
+    const labels = itemConditions.map((c) => c.label);
+    expect(new Set(labels).size).toBe(labels.length);
+    expect(itemConditions.filter((c) => c.isDefault)).toHaveLength(1);
+    expect(itemConditions.filter((c) => c.startsRepairTicket).map((c) => c.label)).toEqual([
+      "Needs repair",
+    ]);
   });
 
   it("uses a lowercase url-safe organization slug", () => {

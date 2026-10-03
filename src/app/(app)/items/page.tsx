@@ -4,7 +4,6 @@ import { PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/authz";
 import { getCampusContext } from "@/lib/data/campuses";
 import { listItems } from "@/lib/data/items";
-import { conditionLabels } from "@/lib/labels";
 
 export const metadata: Metadata = { title: "Inventory" };
 
@@ -46,7 +45,7 @@ export default async function ItemsPage() {
                 <td className="p-2">{item.campus.code}</td>
                 <td className="p-2">{item.location.name}</td>
                 <td className="p-2">{item.department.name}</td>
-                <td className="p-2">{conditionLabels[item.condition]}</td>
+                <td className="p-2">{item.condition.label}</td>
               </tr>
             ))}
           </tbody>

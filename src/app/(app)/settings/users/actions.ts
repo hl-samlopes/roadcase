@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { Prisma } from "@/generated/prisma/client.ts";
+import { isUniqueViolation } from "@/lib/forms/prisma-errors";
 import { PermissionLevel } from "@/generated/prisma/enums.ts";
 import { grantDetailSelect, parseScopeValue, toGrantScope } from "@/lib/admin/scopes";
 import {
@@ -80,10 +80,6 @@ async function anotherOrgAdminExists(organizationId: string, userId: string) {
     },
   });
   return count > 0;
-}
-
-function isUniqueViolation(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
 function refresh(userId?: string) {

@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { Card, PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/authz";
 import { getItem } from "@/lib/data/items";
-import { conditionLabels } from "@/lib/labels";
 
 export const metadata: Metadata = { title: "Item" };
 
@@ -22,7 +21,7 @@ export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
     ["Campus", `${item.campus.name} (${item.campus.code})`],
     ["Location", item.location.name],
     ["Department", item.department.name],
-    ["Condition", conditionLabels[item.condition]],
+    ["Condition", item.condition.label],
     ["Notes", item.notes ?? "None"],
   ];
 
