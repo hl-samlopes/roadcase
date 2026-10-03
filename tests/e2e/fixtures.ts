@@ -27,6 +27,7 @@ export const accounts = {
   preferences: { username: "prefs-user", password: "e2e-prefs-user-pass-1" },
   campusSwitcher: { username: "campus-user", password: "e2e-campus-user-pass-1" },
   textSize: { username: "text-size-user", password: "e2e-text-size-pass-1" },
+  toRename: { username: "jordan-smith", password: "e2e-rename-pass-1" },
 };
 
 /** A second organization with its own branding, for sign-in branding tests. */

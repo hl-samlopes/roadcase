@@ -48,3 +48,37 @@ test("deactivating a user signs them out and blocks sign-in", async ({ browser }
     "don't match an active account",
   );
 });
+
+test("an admin changes a username; the new one signs in and the old one stops working", async ({
+  browser,
+}) => {
+  const adminPage = await (await browser.newContext()).newPage();
+  await signIn(adminPage, accounts.admin);
+  await adminPage.goto("/settings/users");
+  await adminPage.getByRole("link", { name: "Manage Jordan Smith" }).click();
+
+  const profile = adminPage.locator("section", {
+    has: adminPage.getByRole("heading", { name: "Profile" }),
+  });
+  await profile.getByLabel("Username").fill(accounts.admin.username);
+  await profile.getByRole("button", { name: "Save profile" }).click();
+  await expect(profile.getByRole("alert")).toContainText(
+    "Username: Another account already uses this.",
+  );
+
+  await profile.getByLabel("Username").fill("Jordan-Lee");
+  await profile.getByRole("button", { name: "Save profile" }).click();
+  await expect(profile.getByText('They now sign in as "jordan-lee".')).toBeVisible();
+
+  const userPage = await (await browser.newContext()).newPage();
+  await signIn(userPage, { username: "jordan-lee", password: accounts.toRename.password });
+
+  const oldName = await (await browser.newContext()).newPage();
+  await oldName.goto("/sign-in");
+  await oldName.getByLabel("Username").fill(accounts.toRename.username);
+  await oldName.getByLabel("Password").fill(accounts.toRename.password);
+  await oldName.getByRole("button", { name: "Sign in" }).click();
+  await expect(oldName.locator("form").getByRole("alert")).toContainText(
+    "don't match an active account",
+  );
+});

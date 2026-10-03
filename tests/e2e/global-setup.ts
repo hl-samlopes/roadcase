@@ -145,6 +145,10 @@ async function loadFixtures(prisma: PrismaClient) {
     level: "VIEWER",
     scopeType: "ORGANIZATION",
   });
+  await user(accounts.toRename, "Jordan Smith", {
+    level: "VIEWER",
+    scopeType: "ORGANIZATION",
+  });
   await user(accounts.textSize, "Text Size Tester", {
     level: "VIEWER",
     scopeType: "ORGANIZATION",

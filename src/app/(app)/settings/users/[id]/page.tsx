@@ -83,8 +83,23 @@ export default async function ManageUserPage({
         <ActionForm
           action={updateProfileAction.bind(null, user.id)}
           submitLabel="Save profile"
-          fieldLabels={{ displayName: "Display name", email: "Email", role: "Role" }}
+          fieldLabels={{
+            username: "Username",
+            displayName: "Display name",
+            email: "Email",
+            role: "Role",
+          }}
         >
+          <TextField
+            label="Username"
+            name="username"
+            defaultValue={user.username}
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            hint="Used to sign in. If you change it, tell the user their new username."
+            required
+          />
           <TextField
             label="Display name"
             name="displayName"

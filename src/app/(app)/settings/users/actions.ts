@@ -57,6 +57,7 @@ async function manageableUser(actor: CurrentUser, userId: string) {
     select: {
       id: true,
       organizationId: true,
+      username: true,
       isActive: true,
       grants: { select: grantDetailSelect },
     },
@@ -80,6 +81,28 @@ async function anotherOrgAdminExists(organizationId: string, userId: string) {
     },
   });
   return count > 0;
+}
+
+/** A field error when another account in the organization has the username or email. */
+async function findAccountConflict(
+  organizationId: string,
+  data: { username: string; email: string },
+  exceptUserId?: string,
+): Promise<FormState | null> {
+  const existing = await db.user.findFirst({
+    where: {
+      organizationId,
+      ...(exceptUserId ? { id: { not: exceptUserId } } : {}),
+      OR: [{ username: data.username }, { email: data.email }],
+    },
+    select: { username: true },
+  });
+  if (!existing) return null;
+  const field = existing.username === data.username ? "username" : "email";
+  return {
+    error: "Please fix the highlighted fields.",
+    fieldErrors: { [field]: ["Another account already uses this."] },
+  };
 }
 
 function refresh(userId?: string) {
@@ -106,20 +129,8 @@ export async function createUserAction(_state: FormState, formData: FormData): P
     };
   }
 
-  const existing = await db.user.findFirst({
-    where: {
-      organizationId: actor.organizationId,
-      OR: [{ username: data.username }, { email: data.email }],
-    },
-    select: { username: true },
-  });
-  if (existing) {
-    const field = existing.username === data.username ? "username" : "email";
-    return {
-      error: "Please fix the highlighted fields.",
-      fieldErrors: { [field]: ["Another account already uses this."] },
-    };
-  }
+  const conflict = await findAccountConflict(actor.organizationId, data);
+  if (conflict) return conflict;
 
   let userId: string;
   try {
@@ -167,22 +178,28 @@ export async function updateProfileAction(
   const target = await manageableUser(actor, userId);
   if (!target) return NOT_ALLOWED;
 
-  const parsed = profileSchema.safeParse(formObject(formData));
+  const parsed = profileSchema.extend({ username: usernameSchema }).safeParse(formObject(formData));
   if (!parsed.success) return invalid(parsed.error);
+  const data = parsed.data;
+
+  const conflict = await findAccountConflict(actor.organizationId, data, target.id);
+  if (conflict) return conflict;
 
   try {
-    await db.user.update({ where: { id: target.id }, data: parsed.data });
+    await db.user.update({ where: { id: target.id }, data });
   } catch (error) {
     if (isUniqueViolation(error)) {
-      return {
-        error: "Please fix the highlighted fields.",
-        fieldErrors: { email: ["Another account already uses this."] },
-      };
+      return { error: "Another account already uses that username or email." };
     }
     throw error;
   }
   refresh(target.id);
-  return { success: "Profile saved." };
+  return {
+    success:
+      data.username === target.username
+        ? "Profile saved."
+        : `Profile saved. They now sign in as "${data.username}".`,
+  };
 }
 
 export async function resetPasswordAction(
