@@ -15,6 +15,7 @@ const branding = (overrides: Partial<BrandingThemeInput> = {}): BrandingThemeInp
   headingFont: null,
   bodyFont: null,
   radiusPx: null,
+  textScale: null,
   allowUserAccent: true,
   allowedAccents: [],
   allowedFontPairings: ["INTER_KRUB", "SPACE_MONO_PLUS_JAKARTA_SANS"],
@@ -40,6 +41,7 @@ describe("resolveTheme", () => {
       light: defaultLightTokens,
       dark: defaultDarkTokens,
       radiusPx: 6,
+      textScale: 100,
       headingFont: "INTER",
       bodyFont: "KRUB",
     });
@@ -74,18 +76,34 @@ describe("resolveTheme", () => {
       themeMode: "DARK",
       accent: "teal",
       fontPairing: "SPACE_MONO_PLUS_JAKARTA_SANS",
+      textScale: 130,
     });
     expect(theme.mode).toBe("dark");
     expect(theme.light.accent).toBe("#0A6E68");
     expect(theme.dark.accent).toBe("#3CC7B8");
     expect(theme.headingFont).toBe("SPACE_MONO");
     expect(theme.bodyFont).toBe("PLUS_JAKARTA_SANS");
+    expect(theme.textScale).toBe(130);
+  });
+
+  it("uses the organization's text size unless the user picks one, ignoring invalid sizes", () => {
+    const org = branding({ textScale: 115 });
+    const none = { themeMode: "LIGHT" as const, accent: null, fontPairing: null, textScale: null };
+    expect(resolveTheme(org, none).textScale).toBe(115);
+    expect(resolveTheme(org, { ...none, textScale: 150 }).textScale).toBe(150);
+    expect(resolveTheme(org, { ...none, textScale: 999 }).textScale).toBe(115);
+    expect(resolveTheme(branding({ textScale: 3 }), none).textScale).toBe(100);
   });
 
   it("ignores accents and pairings the organization does not allow", () => {
     const theme = resolveTheme(
       branding({ allowedAccents: ["purple"], allowedFontPairings: ["INTER_KRUB"] }),
-      { themeMode: "SYSTEM", accent: "teal", fontPairing: "SPACE_MONO_PLUS_JAKARTA_SANS" },
+      {
+        themeMode: "SYSTEM",
+        accent: "teal",
+        fontPairing: "SPACE_MONO_PLUS_JAKARTA_SANS",
+        textScale: null,
+      },
     );
     expect(theme.mode).toBe("system");
     expect(theme.light.accent).toBe(defaultLightTokens.accent);
@@ -96,7 +114,12 @@ describe("resolveTheme", () => {
     const locked = branding({ allowUserAccent: false });
     expect(availableAccents(locked)).toEqual([]);
     expect(
-      resolveTheme(locked, { themeMode: "LIGHT", accent: "teal", fontPairing: null }).light.accent,
+      resolveTheme(locked, {
+        themeMode: "LIGHT",
+        accent: "teal",
+        fontPairing: null,
+        textScale: null,
+      }).light.accent,
     ).toBe(defaultLightTokens.accent);
   });
 
@@ -109,6 +132,7 @@ describe("resolveTheme", () => {
       themeMode: "LIGHT",
       accent: "purple",
       fontPairing: null,
+      textScale: null,
     });
     expect(theme.light.accent).toBe(defaultLightTokens.accent);
   });
@@ -124,7 +148,7 @@ describe("resolveTheme", () => {
 describe("themeCss", () => {
   it("emits light, explicit dark and system dark rules", () => {
     const css = themeCss(resolveTheme(null, null));
-    expect(css).toContain(":root{--radius:6px;");
+    expect(css).toContain(":root{--radius:6px;--text-scale:1;");
     expect(css).toContain("--font-heading:var(--font-inter)");
     expect(css).toContain("--bg:#F6F7F9;");
     expect(css).toContain(':root[data-theme="dark"]{--bg:#0F1319;');

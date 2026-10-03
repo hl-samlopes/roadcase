@@ -15,6 +15,7 @@
   --warn: #8a5a00;
   --bad: #b3361b;
   --radius: 6px;
+  --text-scale: 1;
   --font-heading: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-krub), ui-sans-serif, system-ui, sans-serif;
   color-scheme: light;
@@ -60,11 +61,20 @@
   --font-body: var(--font-body);
 }
 
+/*
+ * Text size: the root font size follows the user's text scale (and the
+ * browser's own setting), so rem-based text and spacing grow together.
+ * Body text is 12px and headings 24px at the default scale.
+ */
+html {
+  font-size: calc(100% * var(--text-scale, 1));
+}
+
 body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 h1,

@@ -5,8 +5,13 @@ import { Card, PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/authz";
 import { getBranding } from "@/lib/branding";
 import { getPreference } from "@/lib/preferences";
-import { fontPairings } from "@/lib/theme/presets";
-import { availableAccents, availableFontPairings } from "@/lib/theme/resolve";
+import {
+  bodyTextPx,
+  DEFAULT_TEXT_SCALE,
+  fontPairings,
+  textScaleOptions,
+} from "@/lib/theme/presets";
+import { availableAccents, availableFontPairings, isTextScale } from "@/lib/theme/resolve";
 import { savePreferencesAction } from "./actions";
 
 export const metadata: Metadata = { title: "Preferences" };
@@ -61,6 +66,11 @@ export default async function PreferencesPage() {
     preference?.fontPairing && pairings.includes(preference.fontPairing)
       ? preference.fontPairing
       : "";
+
+  const currentScale = isTextScale(preference?.textScale) ? String(preference.textScale) : "";
+  const organizationScale = isTextScale(branding?.textScale)
+    ? branding.textScale
+    : DEFAULT_TEXT_SCALE;
 
   return (
     <div className="max-w-lg">
@@ -126,6 +136,23 @@ export default async function PreferencesPage() {
                 checked={currentPairing === pairing}
               >
                 {fontPairings[pairing].label}
+              </Choice>
+            ))}
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 font-semibold">Text size</legend>
+            <Choice name="textScale" value="" checked={currentScale === ""}>
+              Organization default ({organizationScale}%)
+            </Choice>
+            {textScaleOptions.map((option) => (
+              <Choice
+                key={option.value}
+                name="textScale"
+                value={String(option.value)}
+                checked={currentScale === String(option.value)}
+              >
+                {option.label} ({option.value}%, body text {bodyTextPx(option.value)}px)
               </Choice>
             ))}
           </fieldset>

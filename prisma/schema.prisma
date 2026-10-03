@@ -562,6 +562,8 @@ model OrganizationBranding {
   bodyFont    BodyFont?
   /// Corner radius in px (default 6; 0 is the square-corner variant).
   radiusPx    Int?
+  /// Default text size for the organization as a percentage (100 = 12px body text).
+  textScale   Int?
 
   appBackgroundKey    String?
   /// Overlay opacity over the app background, 0 to 100.
@@ -593,6 +595,9 @@ model UserPreference {
   /// Accent preset key (src/lib/theme/presets.ts); null uses the organization accent.
   accent         String?
   fontPairing    FontPairing?
+  /// Text size as a percentage of the default (100 = 12px body text); null
+  /// uses the organization default.
+  textScale      Int?
   /// Campus selected in the campus switcher.
   activeCampusId String?      @db.Uuid
   updatedAt      DateTime     @updatedAt @db.Timestamptz(3)

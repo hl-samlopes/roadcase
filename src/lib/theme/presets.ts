@@ -45,3 +45,23 @@ export const bodyFontVariables: Record<BodyFont, string> = {
   KRUB: "--font-krub",
   PLUS_JAKARTA_SANS: "--font-plus-jakarta-sans",
 };
+
+/**
+ * Text sizes users may choose, as a percentage of the default. The root font
+ * size scales by this, so text and spacing grow together and the browser's
+ * own font size setting still applies.
+ */
+export const textScaleOptions = [
+  { value: 100, label: "Default" },
+  { value: 115, label: "Large" },
+  { value: 130, label: "Larger" },
+  { value: 150, label: "Largest" },
+  { value: 175, label: "Extra large" },
+] as const;
+
+export const DEFAULT_TEXT_SCALE = 100;
+
+/** Body text size in px at a given scale (12px at 100%). */
+export function bodyTextPx(scale: number): number {
+  return Math.round(12 * scale) / 100;
+}

@@ -62,3 +62,29 @@ test("mode, accent and fonts persist across sessions and stay readable", async (
   expect(await cssVariable(later, "--bg")).toBe("#F6F7F9");
   await expectReadable(later);
 });
+
+test("text size scales body text and headings and persists", async ({ browser }) => {
+  const page = await (await browser.newContext()).newPage();
+  await signIn(page, accounts.textSize);
+  const bodySize = () => page.evaluate(() => getComputedStyle(document.body).fontSize);
+  const headingSize = () =>
+    page
+      .locator("h1")
+      .first()
+      .evaluate((el) => getComputedStyle(el).fontSize);
+
+  expect(await bodySize()).toBe("12px");
+  expect(await headingSize()).toBe("24px");
+
+  await openUserMenu(page);
+  await page.getByRole("link", { name: "Preferences" }).click();
+  await page.getByLabel(/^Largest \(150%/).check();
+  await page.getByRole("button", { name: "Save preferences" }).click();
+  await expect(page.getByText("Done: Preferences saved.")).toBeVisible();
+  expect(await bodySize()).toBe("18px");
+  expect(await headingSize()).toBe("36px");
+
+  const later = await (await browser.newContext()).newPage();
+  await signIn(later, accounts.textSize);
+  expect(await later.evaluate(() => getComputedStyle(document.body).fontSize)).toBe("18px");
+});

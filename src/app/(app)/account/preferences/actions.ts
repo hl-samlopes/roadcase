@@ -7,12 +7,13 @@ import { requireUser } from "@/lib/authz";
 import { getBranding } from "@/lib/branding";
 import { db } from "@/lib/db";
 import { formObject, invalid, type FormState } from "@/lib/forms/state";
-import { availableAccents, availableFontPairings } from "@/lib/theme/resolve";
+import { availableAccents, availableFontPairings, isTextScale } from "@/lib/theme/resolve";
 
 const schema = z.object({
   themeMode: z.enum(ThemeMode, "Choose a mode."),
   accent: z.string().max(40),
   fontPairing: z.string().max(60),
+  textScale: z.string().max(4),
 });
 
 export async function savePreferencesAction(
@@ -25,6 +26,7 @@ export async function savePreferencesAction(
 
   const branding = await getBranding(user.organizationId);
   const { themeMode, accent, fontPairing } = parsed.data;
+  const textScale = parsed.data.textScale === "" ? null : Number(parsed.data.textScale);
 
   // Empty means "use the organization default"; anything else must be offered.
   const accentChoice =
@@ -33,11 +35,20 @@ export async function savePreferencesAction(
     fontPairing === ""
       ? null
       : availableFontPairings(branding).find((pairing) => pairing === fontPairing);
-  if (accentChoice === undefined || pairingChoice === undefined) {
+  if (
+    accentChoice === undefined ||
+    pairingChoice === undefined ||
+    (textScale !== null && !isTextScale(textScale))
+  ) {
     return { error: "That choice isn't available in your organization." };
   }
 
-  const data = { themeMode, accent: accentChoice?.key ?? null, fontPairing: pairingChoice };
+  const data = {
+    themeMode,
+    accent: accentChoice?.key ?? null,
+    fontPairing: pairingChoice,
+    textScale,
+  };
   await db.userPreference.upsert({
     where: { userId: user.id },
     create: { userId: user.id, ...data },

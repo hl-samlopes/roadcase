@@ -3,9 +3,11 @@ import {
   accentPresets,
   allFontPairings,
   bodyFontVariables,
+  DEFAULT_TEXT_SCALE,
   findAccentPreset,
   fontPairings,
   headingFontVariables,
+  textScaleOptions,
   type AccentPreset,
 } from "./presets";
 import {
@@ -24,6 +26,7 @@ export interface BrandingThemeInput {
   headingFont: HeadingFont | null;
   bodyFont: BodyFont | null;
   radiusPx: number | null;
+  textScale: number | null;
   allowUserAccent: boolean;
   allowedAccents: string[];
   allowedFontPairings: FontPairing[];
@@ -34,6 +37,7 @@ export interface PreferenceThemeInput {
   themeMode: ThemeMode;
   accent: string | null;
   fontPairing: FontPairing | null;
+  textScale: number | null;
 }
 
 export interface ResolvedTheme {
@@ -42,6 +46,8 @@ export interface ResolvedTheme {
   light: ThemeTokens;
   dark: ThemeTokens;
   radiusPx: number;
+  /** Percentage applied to the root font size. */
+  textScale: number;
   headingFont: HeadingFont;
   bodyFont: BodyFont;
 }
@@ -70,6 +76,10 @@ function readable(color: string, tokens: ThemeTokens): boolean {
     contrastRatio(color, tokens.bg) >= MIN_CONTRAST &&
     contrastRatio(color, tokens.surface) >= MIN_CONTRAST
   );
+}
+
+export function isTextScale(value: unknown): value is number {
+  return textScaleOptions.some((option) => option.value === value);
 }
 
 /** Organization colors with no user choices applied. */
@@ -128,11 +138,17 @@ export function resolveTheme(
       ? radius
       : parseInt(defaultRadius, 10);
 
+  const textScale = isTextScale(preference?.textScale)
+    ? preference.textScale
+    : isTextScale(branding?.textScale)
+      ? branding.textScale
+      : DEFAULT_TEXT_SCALE;
+
   const mode = preference?.themeMode
     ? (preference.themeMode.toLowerCase() as ResolvedTheme["mode"])
     : "light";
 
-  return { mode, light, dark, radiusPx, headingFont, bodyFont };
+  return { mode, light, dark, radiusPx, textScale, headingFont, bodyFont };
 }
 
 function declarations(tokens: ThemeTokens): string {
@@ -146,6 +162,7 @@ function declarations(tokens: ThemeTokens): string {
 export function themeCss(theme: ResolvedTheme): string {
   const shared =
     `--radius:${theme.radiusPx}px;` +
+    `--text-scale:${isTextScale(theme.textScale) ? theme.textScale / 100 : 1};` +
     `--font-heading:var(${headingFontVariables[theme.headingFont]}),ui-sans-serif,system-ui,sans-serif;` +
     `--font-body:var(${bodyFontVariables[theme.bodyFont]}),ui-sans-serif,system-ui,sans-serif;`;
   const light = declarations(theme.light);

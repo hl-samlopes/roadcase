@@ -140,6 +140,10 @@ async function loadFixtures(prisma: PrismaClient) {
     level: "VIEWER",
     scopeType: "ORGANIZATION",
   });
+  await user(accounts.textSize, "Text Size Tester", {
+    level: "VIEWER",
+    scopeType: "ORGANIZATION",
+  });
   await user(accounts.campusSwitcher, "Campus Switcher", {
     level: "VIEWER",
     scopeType: "ORGANIZATION",
