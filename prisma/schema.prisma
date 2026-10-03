@@ -574,7 +574,7 @@ model OrganizationBranding {
 
   /// What users may change for themselves.
   allowUserAccent     Boolean       @default(true)
-  /// Accent choices offered to users (#RRGGBB); empty means any accent.
+  /// Accent preset keys offered to users (src/lib/theme/presets.ts); empty means all.
   allowedAccents      String[]      @default([])
   allowedFontPairings FontPairing[] @default([INTER_KRUB, SPACE_MONO_PLUS_JAKARTA_SANS])
 
@@ -590,7 +590,7 @@ model OrganizationBranding {
 model UserPreference {
   userId         String       @id @db.Uuid
   themeMode      ThemeMode    @default(LIGHT)
-  /// #RRGGBB accent override; null uses the organization accent.
+  /// Accent preset key (src/lib/theme/presets.ts); null uses the organization accent.
   accent         String?
   fontPairing    FontPairing?
   /// Campus selected in the campus switcher.
