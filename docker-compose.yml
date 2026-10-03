@@ -41,6 +41,18 @@ services:
     command: ["mb", "--ignore-existing", "local/roadcase"]
     restart: on-failure
 
+  # Branding images (logos, favicon, backgrounds) show before sign-in, so the
+  # branding/ prefix is publicly readable. Everything else stays private.
+  minio-public-branding:
+    image: chainguard/minio-client:latest
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      MC_HOST_local: http://roadcase:roadcase-dev-secret@minio:9000
+    command: ["anonymous", "set", "download", "local/roadcase/branding"]
+    restart: on-failure
+
 volumes:
   postgres-data:
   minio-data:

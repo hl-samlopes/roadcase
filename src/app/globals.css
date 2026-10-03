@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 /*
- * Roadcase default theme tokens (Concept A "Utility").
- * Components must read colors, fonts and radius from these variables only;
- * organization branding and user preferences override them at runtime.
+ * Fallback theme tokens (Concept A "Utility"). The root layout injects the
+ * resolved theme (organization branding plus user preferences) after these.
+ * Components must read colors, fonts and radius from these variables only.
  */
 :root {
   --bg: #f6f7f9;
@@ -72,4 +72,27 @@ h2,
 h3 {
   font-family: var(--font-heading);
   font-weight: 700;
+}
+
+/* Light and dark logo variants follow the active mode. */
+.logo-dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .logo-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .logo-dark {
+  display: inline-block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .logo-light {
+    display: none;
+  }
+
+  :root:not([data-theme="light"]) .logo-dark {
+    display: inline-block;
+  }
 }
