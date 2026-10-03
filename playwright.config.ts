@@ -1,10 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
+import { E2E_DATABASE_URL } from "./tests/e2e/fixtures.ts";
 
-const PORT = Number(process.env.PORT ?? 3000);
+// A dedicated dev server and database so tests never touch `npm run dev` data.
+const PORT = Number(process.env.E2E_PORT ?? 3100);
 const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  globalSetup: "./tests/e2e/global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -12,8 +15,16 @@ export default defineConfig({
   use: { baseURL, trace: "on-first-retry" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: "npm run dev",
-    url: baseURL,
+    command: `next dev --port ${PORT}`,
+    // Readiness check that needs no database; global setup builds it after start.
+    url: `${baseURL}/api/auth/providers`,
     reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+    env: {
+      DATABASE_URL: E2E_DATABASE_URL,
+      NEXT_DIST_DIR: ".next-e2e",
+      AUTH_SECRET: "e2e-only-secret-not-used-anywhere-else-000000",
+      AUTH_TRUST_HOST: "true",
+    },
   },
 });

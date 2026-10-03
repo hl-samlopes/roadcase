@@ -8,3 +8,4 @@ playwright-report/
 docs/
 CLAUDE.md
 AGENTS.md
+/.next-e2e/
