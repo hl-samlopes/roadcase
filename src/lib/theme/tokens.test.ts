@@ -4,7 +4,7 @@ import {
   defaultDarkTokens,
   defaultLightTokens,
   type ThemeTokenName,
-} from "./theme-tokens";
+} from "./tokens";
 
 const foregrounds: ThemeTokenName[] = ["text", "muted", "accent", "warn", "bad"];
 const backgrounds: ThemeTokenName[] = ["bg", "surface"];

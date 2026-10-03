@@ -1,6 +1,6 @@
 /**
  * Roadcase default design tokens (Concept A "Utility").
- * Mirrors the CSS variables in `src/app/globals.css`; organization branding
+ * Mirrors the fallback CSS variables in `src/app/globals.css`; organization branding
  * stores overrides keyed by these same names.
  */
 export const themeTokenNames = [
