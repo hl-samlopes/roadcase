@@ -9,6 +9,7 @@ import {
   brandedOrganization,
   BULK_ITEM_COUNT,
   E2E_DATABASE_URL,
+  existingTicket,
   ids,
   items,
   serialField,
@@ -69,6 +70,7 @@ async function loadFixtures(prisma: PrismaClient) {
   const hne = await prisma.campus.findFirstOrThrow({ where: { code: "HNE" } });
   const hsc = await prisma.campus.findFirstOrThrow({ where: { code: "HSC" } });
   const audio = await prisma.category.findFirstOrThrow({ where: { name: "Audio" } });
+  const lighting = await prisma.category.findFirstOrThrow({ where: { name: "Lighting" } });
   const good = await prisma.itemCondition.findFirstOrThrow({
     where: { organizationId: org.id, isDefault: true },
   });
@@ -115,6 +117,24 @@ async function loadFixtures(prisma: PrismaClient) {
         categoryId: audio.id,
         conditionId: good.id,
       },
+      {
+        ...items.speaker,
+        organizationId,
+        campusId: hlk.id,
+        locationId: ids.meadowRanch,
+        departmentId: ids.production,
+        categoryId: audio.id,
+        conditionId: good.id,
+      },
+      {
+        ...items.desk,
+        organizationId,
+        campusId: hne.id,
+        locationId: ids.hneMain,
+        departmentId: ids.production,
+        categoryId: lighting.id,
+        conditionId: good.id,
+      },
     ],
   });
   const cabling = await prisma.category.findFirstOrThrow({ where: { name: "Cabling" } });
@@ -132,7 +152,7 @@ async function loadFixtures(prisma: PrismaClient) {
   });
   await prisma.campus.updateMany({
     where: { id: { in: [hlk.id, hne.id] } },
-    data: { itemSequence: 1 },
+    data: { itemSequence: 2 },
   });
   await prisma.campus.update({ where: { id: hsc.id }, data: { itemSequence: BULK_ITEM_COUNT } });
   await prisma.fieldDefinition.create({
@@ -143,9 +163,11 @@ async function loadFixtures(prisma: PrismaClient) {
     account: { username: string; password: string },
     displayName: string,
     grant: {
-      level: "VIEWER" | "EDITOR";
-      scopeType: "ORGANIZATION" | "LOCATION";
+      level: "VIEWER" | "COMMENTER" | "EDITOR";
+      scopeType: "ORGANIZATION" | "LOCATION" | "DEPARTMENT";
       locationId?: string;
+      departmentId?: string;
+      canSubmitTickets?: boolean;
     },
   ) =>
     prisma.user.create({
@@ -187,6 +209,39 @@ async function loadFixtures(prisma: PrismaClient) {
   await user(accounts.campusSwitcher, "Campus Switcher", {
     level: "VIEWER",
     scopeType: "ORGANIZATION",
+  });
+
+  await user(accounts.ticketSubmitter, "Food Service Manager", {
+    level: "VIEWER",
+    scopeType: "DEPARTMENT",
+    departmentId: ids.production,
+    canSubmitTickets: true,
+  });
+  await user(accounts.commenter, "Casey Commenter", {
+    level: "COMMENTER",
+    scopeType: "ORGANIZATION",
+  });
+
+  const admin = await prisma.user.findFirstOrThrow({
+    where: { organizationId, username: accounts.admin.username },
+  });
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: { ticketSequence: existingTicket.number },
+  });
+  await prisma.serviceTicket.create({
+    data: {
+      id: existingTicket.id,
+      number: existingTicket.number,
+      title: existingTicket.title,
+      organizationId,
+      campusId: hne.id,
+      locationId: ids.hneMain,
+      departmentId: ids.production,
+      itemId: items.hne.id,
+      reporterId: admin.id,
+      events: { create: { type: "CREATED", actorId: admin.id, toStatus: "OPEN" } },
+    },
   });
 
   await prisma.organization.create({

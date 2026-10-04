@@ -13,6 +13,9 @@ export const ids = {
   hlkItem: "0190a000-0000-7000-8000-000000000011",
   hneItem: "0190a000-0000-7000-8000-000000000012",
   hscWarehouse: "0190a000-0000-7000-8000-000000000004",
+  hlkSpeaker: "0190a000-0000-7000-8000-000000000013",
+  hneDesk: "0190a000-0000-7000-8000-000000000014",
+  hneTicket: "0190a000-0000-7000-8000-000000000021",
 };
 
 /** Custom field present in the e2e organization. */
@@ -24,7 +27,12 @@ export const BULK_ITEM_COUNT = 55;
 export const items = {
   hlk: { id: ids.hlkItem, code: "HLK-000001", name: "Wireless mic kit" },
   hne: { id: ids.hneItem, code: "HNE-000001", name: "Stage monitor wedge" },
+  speaker: { id: ids.hlkSpeaker, code: "HLK-000002", name: "Powered speaker" },
+  desk: { id: ids.hneDesk, code: "HNE-000002", name: "Lighting desk" },
 };
+
+/** A ticket that exists before the tests run, reported by the admin. */
+export const existingTicket = { id: ids.hneTicket, number: 1, title: "Monitor wedge buzzes" };
 
 export const accounts = {
   admin: { username: "e2e-admin", password: "e2e-admin-password-1" },
@@ -35,6 +43,8 @@ export const accounts = {
   campusSwitcher: { username: "campus-user", password: "e2e-campus-user-pass-1" },
   textSize: { username: "text-size-user", password: "e2e-text-size-pass-1" },
   toRename: { username: "jordan-smith", password: "e2e-rename-pass-1" },
+  ticketSubmitter: { username: "fs-manager", password: "e2e-fs-manager-pass-1" },
+  commenter: { username: "commenter", password: "e2e-commenter-pass-1" },
 };
 
 /** A second organization with its own branding, for sign-in branding tests. */
