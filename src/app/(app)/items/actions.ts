@@ -1,6 +1,5 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -8,10 +7,11 @@ import type { Prisma } from "@/generated/prisma/client.ts";
 import { can, requireUser, type CurrentUser } from "@/lib/authz";
 import { activeFields, allowedHomes, getItem, homeValue } from "@/lib/data/items";
 import { db } from "@/lib/db";
-import { checkUpload, cleanFileName, type DetectedFile } from "@/lib/files";
 import { formObject, invalid, type FormState } from "@/lib/forms/state";
 import { parseCustomFieldInput } from "@/lib/items/custom-fields";
-import { deleteObject, putObject } from "@/lib/storage";
+import { createTicket, findOpenTicket, openTicketStatuses } from "@/lib/data/tickets";
+import { deleteObject } from "@/lib/storage";
+import { readUpload, storeUpload } from "@/lib/uploads";
 
 const NOT_ALLOWED: FormState = { error: "You don't have permission to do that." };
 const PLEASE_FIX = "Please fix the highlighted fields.";
@@ -58,7 +58,7 @@ async function validateItem(actor: CurrentUser, formData: FormData, existingCust
     }),
     db.itemCondition.findFirst({
       where: { id: input.condition, organizationId: actor.organizationId },
-      select: { id: true, archivedAt: true },
+      select: { id: true, label: true, archivedAt: true, startsRepairTicket: true },
     }),
     activeFields(actor.organizationId),
   ]);
@@ -95,23 +95,6 @@ function itemData(input: ItemInput) {
   };
 }
 
-/** Reads and checks an uploaded file; returns null when no file was chosen. */
-async function readUpload(formData: FormData, name: string, options: { photoOnly?: boolean } = {}) {
-  const file = formData.get(name);
-  if (!(file instanceof File) || file.size === 0) return null;
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const check = checkUpload(bytes, options);
-  return check.ok
-    ? ({ ok: true, bytes, detected: check.file, fileName: file.name } as const)
-    : ({ ok: false, error: check.error } as const);
-}
-
-async function storeUpload(organizationId: string, bytes: Uint8Array, detected: DetectedFile) {
-  const storageKey = `attachments/${organizationId}/${randomUUID()}.${detected.extension}`;
-  await putObject(storageKey, bytes, detected.contentType);
-  return storageKey;
-}
-
 export async function createItemAction(_state: FormState, formData: FormData): Promise<FormState> {
   const actor = await requireUser();
   const validated = await validateItem(actor, formData, {});
@@ -127,9 +110,7 @@ export async function createItemAction(_state: FormState, formData: FormData): P
 
   const photo = await readUpload(formData, "photo", { photoOnly: true });
   if (photo && !photo.ok) return { error: PLEASE_FIX, fieldErrors: { photo: [photo.error] } };
-  const storageKey = photo
-    ? await storeUpload(actor.organizationId, photo.bytes, photo.detected)
-    : null;
+  const stored = photo?.ok ? await storeUpload(actor.organizationId, photo) : null;
 
   let itemId: string;
   try {
@@ -154,26 +135,25 @@ export async function createItemAction(_state: FormState, formData: FormData): P
         },
         select: { id: true },
       });
-      if (photo?.ok && storageKey) {
+      if (stored) {
         const attachment = await tx.attachment.create({
-          data: {
-            organizationId: actor.organizationId,
-            itemId: item.id,
-            kind: "PHOTO",
-            storageKey,
-            fileName: cleanFileName(photo.fileName, photo.detected.extension),
-            contentType: photo.detected.contentType,
-            sizeBytes: photo.bytes.length,
-            uploadedById: actor.id,
-          },
+          data: { ...stored, itemId: item.id, uploadedById: actor.id },
           select: { id: true },
         });
         await tx.item.update({ where: { id: item.id }, data: { primaryPhotoId: attachment.id } });
       }
+      if (condition.startsRepairTicket) {
+        await createTicket(tx, {
+          item: { id: item.id, ...home.scope },
+          title: `${condition.label}: reported when the item was added`,
+          description: null,
+          reporterId: actor.id,
+        });
+      }
       return item.id;
     });
   } catch (error) {
-    if (storageKey) await deleteObject(storageKey).catch(() => {});
+    if (stored) await deleteObject(stored.storageKey).catch(() => {});
     throw error;
   }
 
@@ -215,21 +195,45 @@ export async function updateItemAction(
   if (!home)
     return { error: PLEASE_FIX, fieldErrors: { home: ["Choose a home you can edit items in."] } };
 
-  // Step 5: a condition that starts a repair ticket will open one here.
-  await db.item.update({
-    where: { id: item.id },
-    data: {
-      ...itemData(input),
-      customFields: customFields as Prisma.InputJsonValue,
-      campusId: home.scope.campusId,
-      locationId: home.scope.locationId,
-      departmentId: home.scope.departmentId,
-      updatedById: actor.id,
-    },
+  const scope = {
+    campusId: home.scope.campusId,
+    locationId: home.scope.locationId,
+    departmentId: home.scope.departmentId,
+  };
+  const ticket = await db.$transaction(async (tx) => {
+    await tx.item.update({
+      where: { id: item.id },
+      data: {
+        ...itemData(input),
+        customFields: customFields as Prisma.InputJsonValue,
+        ...scope,
+        updatedById: actor.id,
+      },
+    });
+    // Open tickets follow the item to its new home; closed ones keep their history.
+    await tx.serviceTicket.updateMany({
+      where: { itemId: item.id, status: { in: openTicketStatuses } },
+      data: scope,
+    });
+    // Changing to a condition that starts a repair ticket opens one, unless
+    // the item already has an open ticket.
+    if (
+      condition.startsRepairTicket &&
+      condition.id !== item.conditionId &&
+      !(await findOpenTicket(tx, item.id))
+    ) {
+      return createTicket(tx, {
+        item: { id: item.id, organizationId: item.organizationId, ...scope },
+        title: `Condition set to ${condition.label}`,
+        description: null,
+        reporterId: actor.id,
+      });
+    }
+    return null;
   });
   revalidatePath("/items");
   revalidatePath(`/items/${item.id}`);
-  redirect(`/items/${item.id}?saved=1`);
+  redirect(`/items/${item.id}?saved=1${ticket ? `&ticket=${ticket.number}` : ""}`);
 }
 
 async function editableItem(actor: CurrentUser, itemId: string) {
@@ -250,33 +254,24 @@ export async function uploadAttachmentAction(
   if (!upload) return { error: PLEASE_FIX, fieldErrors: { file: ["Choose a file to upload."] } };
   if (!upload.ok) return { error: PLEASE_FIX, fieldErrors: { file: [upload.error] } };
 
-  const storageKey = await storeUpload(actor.organizationId, upload.bytes, upload.detected);
+  const stored = await storeUpload(actor.organizationId, upload);
   try {
     await db.$transaction(async (tx) => {
       const attachment = await tx.attachment.create({
-        data: {
-          organizationId: actor.organizationId,
-          itemId: item.id,
-          kind: upload.detected.kind,
-          storageKey,
-          fileName: cleanFileName(upload.fileName, upload.detected.extension),
-          contentType: upload.detected.contentType,
-          sizeBytes: upload.bytes.length,
-          uploadedById: actor.id,
-        },
+        data: { ...stored, itemId: item.id, uploadedById: actor.id },
         select: { id: true },
       });
       // The first photo becomes the item's main photo.
-      if (upload.detected.kind === "PHOTO" && !item.primaryPhotoId) {
+      if (stored.kind === "PHOTO" && !item.primaryPhotoId) {
         await tx.item.update({ where: { id: item.id }, data: { primaryPhotoId: attachment.id } });
       }
     });
   } catch (error) {
-    await deleteObject(storageKey).catch(() => {});
+    await deleteObject(stored.storageKey).catch(() => {});
     throw error;
   }
   revalidatePath(`/items/${item.id}`);
-  return { success: `Uploaded ${cleanFileName(upload.fileName, upload.detected.extension)}.` };
+  return { success: `Uploaded ${upload.fileName}.` };
 }
 
 export async function deleteAttachmentAction(
