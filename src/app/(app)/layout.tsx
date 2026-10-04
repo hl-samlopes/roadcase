@@ -3,7 +3,7 @@ import { CampusSwitcher } from "@/components/shell/campus-switcher";
 import { SidebarNav, type NavItem } from "@/components/shell/sidebar-nav";
 import { UserMenu } from "@/components/shell/user-menu";
 import { isAnyAdmin, requireUser } from "@/lib/authz";
-import { displayName, getBranding, logoUrls } from "@/lib/branding";
+import { brandingAssetUrl, displayName, getBranding, logoUrls } from "@/lib/branding";
 import { getCampusContext } from "@/lib/data/campuses";
 
 /**
@@ -18,6 +18,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   ]);
   const name = displayName(branding);
   const logos = logoUrls(branding);
+  const background = brandingAssetUrl(branding?.appBackgroundKey);
+  const dim = Math.min(100, Math.max(0, branding?.appBackgroundDim ?? 60)) / 100;
 
   const nav: NavItem[] = [
     { href: "/items", label: "Inventory" },
@@ -30,6 +32,14 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex flex-1 flex-col md:flex-row">
+      {background ? (
+        // Organization background, dimmed with the background color so text stays readable.
+        <div aria-hidden="true" className="fixed inset-0 -z-10 print:hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element -- branding image from storage */}
+          <img src={background} alt="" className="h-full w-full object-cover" />
+          <div className="bg-bg absolute inset-0" style={{ opacity: dim }} />
+        </div>
+      ) : null}
       <a
         href="#main"
         className="bg-accent text-surface rounded-theme sr-only px-3 py-1.5 focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"

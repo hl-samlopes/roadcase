@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/authz";
 import { safeCallbackUrl } from "@/lib/auth/redirect";
-import { displayName, getBranding } from "@/lib/branding";
+import { brandingAssetUrl, displayName, getBranding } from "@/lib/branding";
 import { resolveOrganization } from "@/lib/organization";
 import { SignInScreen } from "../sign-in-screen";
 
@@ -16,7 +16,12 @@ export async function generateMetadata({
   params,
 }: PageProps<"/sign-in/[organization]">): Promise<Metadata> {
   const { branding } = await load((await params).organization);
-  return { title: { absolute: `Sign in · ${displayName(branding)}` } };
+  const favicon = brandingAssetUrl(branding?.faviconKey);
+  return {
+    title: { absolute: `Sign in · ${displayName(branding)}` },
+    // The root layout's icon follows the address's default organization, so set this one's.
+    ...(favicon ? { icons: { icon: favicon } } : {}),
+  };
 }
 
 export default async function OrganizationSignInPage({
