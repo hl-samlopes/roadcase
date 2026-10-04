@@ -41,7 +41,10 @@ export function detectFileType(bytes: Uint8Array): DetectedFile | null {
 
 export type UploadCheck = { ok: true; file: DetectedFile } | { ok: false; error: string };
 
-export function checkUpload(bytes: Uint8Array, options: { photoOnly?: boolean } = {}): UploadCheck {
+export function checkUpload(
+  bytes: Uint8Array,
+  options: { photoOnly?: boolean; maxBytes?: number } = {},
+): UploadCheck {
   if (bytes.length === 0) return { ok: false, error: "The file is empty." };
   const file = detectFileType(bytes);
   if (!file || (options.photoOnly && file.kind !== "PHOTO")) {
@@ -52,14 +55,18 @@ export function checkUpload(bytes: Uint8Array, options: { photoOnly?: boolean } 
         : "Upload a JPEG, PNG or WebP photo, or a PDF document.",
     };
   }
-  const limit = file.kind === "PHOTO" ? MAX_PHOTO_BYTES : MAX_DOCUMENT_BYTES;
+  const limit = options.maxBytes ?? (file.kind === "PHOTO" ? MAX_PHOTO_BYTES : MAX_DOCUMENT_BYTES);
   if (bytes.length > limit) {
     return {
       ok: false,
-      error: `${file.kind === "PHOTO" ? "Photos" : "Documents"} can be up to ${limit / 1024 / 1024} MB.`,
+      error: `${file.kind === "PHOTO" ? "Images" : "Documents"} can be up to ${formatLimit(limit)}.`,
     };
   }
   return { ok: true, file };
+}
+
+function formatLimit(bytes: number): string {
+  return bytes >= 1024 * 1024 ? `${bytes / 1024 / 1024} MB` : `${Math.round(bytes / 1024)} KB`;
 }
 
 /** A display file name with no path parts or control characters. */

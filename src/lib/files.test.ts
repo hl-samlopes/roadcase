@@ -39,7 +39,11 @@ describe("checkUpload", () => {
     expect(checkUpload(jpeg, { photoOnly: true }).ok).toBe(true);
     const big = new Uint8Array(MAX_PHOTO_BYTES + 1);
     big.set(jpeg);
-    expect(checkUpload(big)).toEqual({ ok: false, error: "Photos can be up to 10 MB." });
+    expect(checkUpload(big)).toEqual({ ok: false, error: "Images can be up to 10 MB." });
+    expect(checkUpload(jpeg, { maxBytes: 4 })).toEqual({
+      ok: false,
+      error: "Images can be up to 0 KB.",
+    });
     expect(checkUpload(bytes())).toEqual({ ok: false, error: "The file is empty." });
   });
 });
