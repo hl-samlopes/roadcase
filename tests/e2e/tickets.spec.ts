@@ -13,7 +13,8 @@ test("the full flow: flag an item, work the ticket, complete it into a service l
 }) => {
   test.setTimeout(90_000);
   // 1. An editor sets the item to a condition that starts a repair ticket.
-  const editor = await (await browser.newContext()).newPage();
+  // A US time zone, where the UTC date is often already tomorrow.
+  const editor = await (await browser.newContext({ timezoneId: "America/Los_Angeles" })).newPage();
   await signIn(editor, accounts.meadowRanchEditor);
   await editor.goto(`/items/${items.speaker.id}/edit`);
   await editor.getByLabel("Condition").selectOption({ label: "Needs repair" });
@@ -61,6 +62,8 @@ test("the full flow: flag an item, work the ticket, complete it into a service l
 
   // 4. Completing records the service log and sets the item back to Good.
   const complete = card(editor, "Complete");
+  const localToday = await editor.evaluate(() => new Date().toLocaleDateString("en-CA"));
+  await expect(complete.getByLabel("Service date")).toHaveValue(localToday);
   await complete.getByLabel("Service type").fill("Repair");
   await complete.getByLabel("Cost").fill("45.50");
   await complete.getByLabel("Service notes").fill("Replaced the left driver.");

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
+import { LocalDateField } from "@/components/local-date-field";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, PageHeader, SelectField, TextAreaField, TextField } from "@/components/ui";
 import { can, canCommentOnTicket, isTicketClosed, requireUser } from "@/lib/authz";
@@ -84,7 +85,6 @@ export default async function TicketPage({ params, searchParams }: PageProps<"/t
         })
       : null,
   ]);
-  const today = new Date().toISOString().slice(0, 10);
   const defaultCondition = conditions.find((c) => c.isDefault)?.id ?? "";
 
   return (
@@ -342,11 +342,10 @@ export default async function TicketPage({ params, searchParams }: PageProps<"/t
                       file: "Receipt or report",
                     }}
                   >
-                    <TextField
+                    <LocalDateField
                       label="Service date"
                       name="serviceDate"
-                      type="date"
-                      defaultValue={today}
+                      id="complete-service-date"
                       required
                     />
                     <TextField
