@@ -14,6 +14,8 @@ import {
   type CurrentUser,
 } from "@/lib/authz";
 import { hashPassword, passwordSchema } from "@/lib/auth/password";
+import { clearThrottle } from "@/lib/auth/throttle";
+import { accountKey } from "@/lib/auth/throttle-policy";
 import { db } from "@/lib/db";
 import { formObject, invalid, type FormState } from "@/lib/forms/state";
 
@@ -222,6 +224,7 @@ export async function resetPasswordAction(
       sessionVersion: { increment: 1 },
     },
   });
+  await clearThrottle(accountKey(actor.organization.slug, target.username));
   if (target.id === actor.id) redirect("/sign-in");
   return { success: "Password reset. The user has been signed out everywhere." };
 }
@@ -250,6 +253,7 @@ export async function setActiveAction(
     where: { id: target.id },
     data: { isActive: active, sessionVersion: { increment: 1 } },
   });
+  if (active) await clearThrottle(accountKey(actor.organization.slug, target.username));
   refresh(target.id);
   return { success: active ? "Account reactivated." : "Account deactivated and signed out." };
 }
@@ -337,4 +341,18 @@ export async function removeGrantAction(
   await db.permissionGrant.delete({ where: { id: grant.id } });
   refresh(target.id);
   return { success: "Access removed." };
+}
+
+/** Lifts a sign-in lock caused by too many failed attempts. */
+export async function unlockSignInAction(
+  userId: string,
+  _state: FormState,
+  _formData: FormData,
+): Promise<FormState> {
+  const actor = await requireUser();
+  const target = await manageableUser(actor, userId);
+  if (!target) return NOT_ALLOWED;
+  await clearThrottle(accountKey(actor.organization.slug, target.username));
+  refresh(target.id);
+  return { success: "Sign-in unlocked." };
 }

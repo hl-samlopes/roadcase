@@ -48,6 +48,7 @@ export const accounts = {
   toRename: { username: "jordan-smith", password: "e2e-rename-pass-1" },
   ticketSubmitter: { username: "fs-manager", password: "e2e-fs-manager-pass-1" },
   commenter: { username: "commenter", password: "e2e-commenter-pass-1" },
+  lockout: { username: "lockout-user", password: "e2e-lockout-pass-1" },
 };
 
 /** A second organization with its own branding, for sign-in branding tests. */

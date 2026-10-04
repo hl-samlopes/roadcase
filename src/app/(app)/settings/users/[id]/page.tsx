@@ -12,6 +12,8 @@ import {
   toGrantScope,
 } from "@/lib/admin/scopes";
 import { canManageGrantScope, canManageUser, requireUser } from "@/lib/authz";
+import { lockMinutesLeft } from "@/lib/auth/throttle";
+import { accountKey } from "@/lib/auth/throttle-policy";
 import { db } from "@/lib/db";
 import { levelLabels } from "@/lib/labels";
 import {
@@ -19,6 +21,7 @@ import {
   removeGrantAction,
   resetPasswordAction,
   setActiveAction,
+  unlockSignInAction,
   updateProfileAction,
 } from "../actions";
 
@@ -57,7 +60,10 @@ export default async function ManageUserPage({
     notFound();
   }
 
-  const scopeOptions = await manageableScopeOptions(actor);
+  const [scopeOptions, lockMinutes] = await Promise.all([
+    manageableScopeOptions(actor),
+    lockMinutesLeft(accountKey(actor.organization.slug, user.username)),
+  ]);
   const isSelf = user.id === actor.id;
 
   return (
@@ -78,6 +84,20 @@ export default async function ManageUserPage({
         <span className="text-text">{user.isActive ? "Active" : "Deactivated"}</span> · Last sign-in{" "}
         <span className="text-text">{user.lastSignInAt?.toLocaleString("en-US") ?? "Never"}</span>
       </p>
+
+      {lockMinutes ? (
+        <Card title="Sign-in locked">
+          <p className="mb-3">
+            Too many failed sign-in attempts. Sign-in stays locked for about {lockMinutes} more
+            minutes, or until you unlock it.
+          </p>
+          <ActionForm
+            action={unlockSignInAction.bind(null, user.id)}
+            submitLabel="Unlock sign-in"
+            variant="secondary"
+          />
+        </Card>
+      ) : null}
 
       <Card title="Profile">
         <ActionForm

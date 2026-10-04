@@ -1,6 +1,13 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
+import { headers } from "next/headers";
 import Credentials from "next-auth/providers/credentials";
 import { verifyCredentials } from "@/lib/auth/credentials";
+import { clientAddress } from "@/lib/auth/throttle-policy";
+
+/** Thrown when too many failed attempts have locked the username or address. */
+export class TooManyAttempts extends CredentialsSignin {
+  code = "rate_limited";
+}
 
 /**
  * Auth.js setup: username and password against our own users table, with a
@@ -21,7 +28,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: { organization: {}, username: {}, password: {} },
-      authorize: (credentials) => verifyCredentials(credentials),
+      async authorize(credentials) {
+        const result = await verifyCredentials(credentials, clientAddress(await headers()));
+        if (result.status === "locked") throw new TooManyAttempts();
+        return result.status === "ok" ? result.user : null;
+      },
     }),
   ],
   callbacks: {

@@ -625,3 +625,19 @@ model UserPreference {
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   activeCampus Campus? @relation(fields: [activeCampusId], references: [id], onDelete: SetNull)
 }
+
+// ---------------------------------------------------------------------------
+// Security
+// ---------------------------------------------------------------------------
+
+/// Failed sign-in counter for one username (per organization) or one IP
+/// address. Keys look like "user:<org slug>:<username>" or "ip:<address>".
+model SignInThrottle {
+  key             String    @id
+  failures        Int       @default(0)
+  windowStartedAt DateTime  @db.Timestamptz(3)
+  lockedUntil     DateTime? @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([updatedAt])
+}

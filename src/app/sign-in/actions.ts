@@ -15,6 +15,12 @@ export async function signInAction(_state: FormState, formData: FormData): Promi
     });
   } catch (error) {
     // signIn redirects by throwing; only authentication failures are handled here.
+    if (error instanceof AuthError && (error as { code?: string }).code === "rate_limited") {
+      return {
+        error:
+          "Too many failed sign-in attempts. Wait 15 minutes and try again, or ask an admin to unlock your account.",
+      };
+    }
     if (error instanceof AuthError) {
       return { error: "That username and password don't match an active account." };
     }

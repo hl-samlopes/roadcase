@@ -2,6 +2,8 @@ import "server-only";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { hashPassword, verifyPassword } from "./password";
+import { clearThrottle, isThrottled, recordFailure, throttleKeys } from "./throttle";
+import { accountKey, addressKey } from "./throttle-policy";
 
 export const credentialsSchema = z.object({
   organization: z.string().min(1).max(100),
@@ -14,14 +16,31 @@ export const credentialsSchema = z.object({
   password: z.string().min(1).max(256),
 });
 
+export type CredentialsResult =
+  | {
+      status: "ok";
+      user: { id: string; organizationId: string; name: string; sessionVersion: number };
+    }
+  | { status: "invalid" }
+  | { status: "locked" };
+
 /**
- * Checks a username and password. Returns the user on success and null on any
- * failure, without saying which part was wrong.
+ * Checks a username and password, without saying which part was wrong.
+ * Repeated failures lock the username, and the client address, for a while;
+ * unknown usernames lock the same way, so locks don't reveal which exist.
  */
-export async function verifyCredentials(input: unknown) {
+export async function verifyCredentials(
+  input: unknown,
+  ip: string | null,
+): Promise<CredentialsResult> {
   const parsed = credentialsSchema.safeParse(input);
-  if (!parsed.success) return null;
+  if (!parsed.success) return { status: "invalid" };
   const { organization, username, password } = parsed.data;
+
+  const account = accountKey(organization, username);
+  const keys = throttleKeys(account, ip ? addressKey(ip) : null);
+  // Checked before the password, so locked attempts cost no hashing either.
+  if (await isThrottled(keys)) return { status: "locked" };
 
   const user = await db.user.findFirst({
     where: { username, organization: { slug: organization } },
@@ -39,7 +58,11 @@ export async function verifyCredentials(input: unknown) {
     user?.isActive ? user.passwordHash : null,
     password,
   );
-  if (!user || !valid) return null;
+  if (!user || !valid) {
+    await recordFailure(keys);
+    return { status: "invalid" };
+  }
+  await clearThrottle(account);
 
   await db.user.update({
     where: { id: user.id },
@@ -50,9 +73,12 @@ export async function verifyCredentials(input: unknown) {
   });
 
   return {
-    id: user.id,
-    organizationId: user.organizationId,
-    name: user.displayName,
-    sessionVersion: user.sessionVersion,
+    status: "ok",
+    user: {
+      id: user.id,
+      organizationId: user.organizationId,
+      name: user.displayName,
+      sessionVersion: user.sessionVersion,
+    },
   };
 }

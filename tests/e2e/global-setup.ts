@@ -274,6 +274,10 @@ async function loadFixtures(prisma: PrismaClient) {
     departmentId: ids.production,
     canSubmitTickets: true,
   });
+  await user(accounts.lockout, "Lockout Tester", {
+    level: "VIEWER",
+    scopeType: "ORGANIZATION",
+  });
   await user(accounts.commenter, "Casey Commenter", {
     level: "COMMENTER",
     scopeType: "ORGANIZATION",
