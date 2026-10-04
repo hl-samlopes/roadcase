@@ -120,7 +120,7 @@ export default async function ServiceLogPage({ searchParams }: PageProps<"/servi
       </p>
 
       {logs.length > 0 ? (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="rounded-theme border-border bg-surface w-full border-collapse border">
             <thead>
               <tr className="border-border text-muted border-b text-left">

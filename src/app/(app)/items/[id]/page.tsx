@@ -83,8 +83,9 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,20rem)_1fr]">
         <div className="flex flex-col gap-4">
-          <Card>
-            {item.primaryPhotoId ? (
+          {/* No placeholder card without a photo; it only pushed details down on phones. */}
+          {item.primaryPhotoId ? (
+            <Card>
               <a href={attachmentUrl(item.primaryPhotoId)}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- served by the permission-checked attachment route */}
                 <img
@@ -93,10 +94,8 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
                   className="rounded-theme max-h-72 w-full object-contain"
                 />
               </a>
-            ) : (
-              <p className="text-muted">No photo yet.</p>
-            )}
-          </Card>
+            </Card>
+          ) : null}
           <Card title="Code">
             <Barcode value={item.code} className="h-16 w-full" />
             <p className="mt-1 text-center font-mono text-base">{item.code}</p>
@@ -224,37 +223,39 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
             {item.serviceLogs.length === 0 ? (
               <p className="text-muted">No service recorded yet.</p>
             ) : (
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-border text-muted border-b text-left">
-                    <th className="p-2">Date</th>
-                    <th className="p-2">Type</th>
-                    <th className="p-2">Cost</th>
-                    <th className="p-2">Notes</th>
-                    <th className="p-2">Ticket</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {item.serviceLogs.map((log) => (
-                    <tr key={log.id} className="border-border border-b last:border-0">
-                      <td className="p-2 whitespace-nowrap">{formatDate(log.serviceDate)}</td>
-                      <td className="p-2">{log.serviceType}</td>
-                      <td className="p-2">{formatMoney(log.cost)}</td>
-                      <td className="p-2">{log.notes}</td>
-                      <td className="p-2">
-                        {log.ticket ? (
-                          <Link
-                            href={`/tickets/${log.ticket.id}`}
-                            className="text-accent hover:underline"
-                          >
-                            #{log.ticket.number}
-                          </Link>
-                        ) : null}
-                      </td>
+              <div className="relative overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-border text-muted border-b text-left">
+                      <th className="p-2">Date</th>
+                      <th className="p-2">Type</th>
+                      <th className="p-2">Cost</th>
+                      <th className="p-2">Notes</th>
+                      <th className="p-2">Ticket</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {item.serviceLogs.map((log) => (
+                      <tr key={log.id} className="border-border border-b last:border-0">
+                        <td className="p-2 whitespace-nowrap">{formatDate(log.serviceDate)}</td>
+                        <td className="p-2">{log.serviceType}</td>
+                        <td className="p-2">{formatMoney(log.cost)}</td>
+                        <td className="p-2">{log.notes}</td>
+                        <td className="p-2">
+                          {log.ticket ? (
+                            <Link
+                              href={`/tickets/${log.ticket.id}`}
+                              className="text-accent hover:underline"
+                            >
+                              #{log.ticket.number}
+                            </Link>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </Card>
         </div>

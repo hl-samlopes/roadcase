@@ -98,7 +98,7 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
       </p>
 
       {tickets.length > 0 ? (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="rounded-theme border-border bg-surface w-full border-collapse border">
             <thead>
               <tr className="border-border text-muted border-b text-left">
@@ -107,9 +107,9 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
                 <th className="p-2">Item</th>
                 <th className="p-2">Status</th>
                 <th className="p-2">Assigned to</th>
-                <th className="p-2">Campus</th>
-                <th className="p-2">Department</th>
-                <th className="p-2">Updated</th>
+                <th className="hidden p-2 md:table-cell">Campus</th>
+                <th className="hidden p-2 md:table-cell">Department</th>
+                <th className="hidden p-2 md:table-cell">Updated</th>
               </tr>
             </thead>
             <tbody>
@@ -128,9 +128,9 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
                     <StatusBadge status={ticket.status} />
                   </td>
                   <td className="p-2">{assigneeLabel(ticket) ?? "Nobody yet"}</td>
-                  <td className="p-2">{ticket.campus.code}</td>
-                  <td className="p-2">{ticket.department.name}</td>
-                  <td className="p-2 whitespace-nowrap">
+                  <td className="hidden p-2 md:table-cell">{ticket.campus.code}</td>
+                  <td className="hidden p-2 md:table-cell">{ticket.department.name}</td>
+                  <td className="hidden p-2 whitespace-nowrap md:table-cell">
                     {ticket.updatedAt.toLocaleDateString("en-US", { dateStyle: "medium" })}
                   </td>
                 </tr>

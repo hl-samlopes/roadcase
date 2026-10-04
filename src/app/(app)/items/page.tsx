@@ -28,13 +28,14 @@ function listHref(
   return query ? `/items?${query}` : "/items";
 }
 
-const columns: { key: SortKey | null; label: string }[] = [
+// Campus and department are on the item page, so phones skip them to keep rows readable.
+const columns: { key: SortKey | null; label: string; wide?: boolean }[] = [
   { key: "code", label: "Code" },
   { key: "name", label: "Name" },
   { key: "category", label: "Category" },
-  { key: null, label: "Campus" },
+  { key: null, label: "Campus", wide: true },
   { key: "location", label: "Location" },
-  { key: null, label: "Department" },
+  { key: null, label: "Department", wide: true },
   { key: "condition", label: "Condition" },
 ];
 
@@ -172,7 +173,7 @@ export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
       {items.length > 0 ? (
         <>
           <form id="labels-form" action="/items/labels" method="get" />
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="rounded-theme border-border bg-surface w-full border-collapse border">
               <thead>
                 <tr className="border-border text-muted border-b text-left">
@@ -184,7 +185,7 @@ export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
                     return (
                       <th
                         key={column.label}
-                        className="p-2"
+                        className={`p-2 ${column.wide ? "hidden md:table-cell" : ""}`}
                         aria-sort={
                           current ? (dir === "asc" ? "ascending" : "descending") : undefined
                         }
@@ -241,9 +242,9 @@ export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
                         <span className="text-muted"> / {item.subcategory.name}</span>
                       ) : null}
                     </td>
-                    <td className="p-2">{item.campus.code}</td>
+                    <td className="hidden p-2 md:table-cell">{item.campus.code}</td>
                     <td className="p-2">{item.location.name}</td>
-                    <td className="p-2">{item.department.name}</td>
+                    <td className="hidden p-2 md:table-cell">{item.department.name}</td>
                     <td className="p-2">{item.condition.label}</td>
                   </tr>
                 ))}

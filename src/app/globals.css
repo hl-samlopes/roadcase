@@ -106,3 +106,12 @@ h3 {
     display: inline-block;
   }
 }
+
+/*
+ * Placeholder text uses the muted token (at least 4.5:1 on backgrounds and
+ * surfaces) instead of the browser's half-strength text color.
+ */
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
