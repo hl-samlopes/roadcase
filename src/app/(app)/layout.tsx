@@ -36,7 +36,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       >
         Skip to content
       </a>
-      <aside className="border-border bg-surface flex shrink-0 flex-col gap-4 border-b p-3 md:w-[220px] md:border-r md:border-b-0">
+      <aside className="border-border bg-surface flex shrink-0 print:hidden flex-col gap-4 border-b p-3 md:w-[220px] md:border-r md:border-b-0">
         <Link href="/items" className="font-heading block px-3 py-1 text-base font-bold">
           {logos.light ? (
             <>
@@ -56,13 +56,13 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         <SidebarNav items={nav} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="border-border bg-surface flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2">
+        <header className="border-border bg-surface flex flex-wrap print:hidden items-center justify-between gap-2 border-b px-4 py-2">
           <CampusSwitcher campuses={campuses} active={active} />
           <div className="ml-auto">
             <UserMenu displayName={user.displayName} username={user.username} />
           </div>
         </header>
-        <main id="main" className="flex-1 p-4">
+        <main id="main" className="flex-1 p-4 print:p-0">
           {children}
         </main>
       </div>
