@@ -105,11 +105,13 @@ enum SignInLogoPlacement {
 // ---------------------------------------------------------------------------
 
 model Organization {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  id             String   @id @default(uuid(7)) @db.Uuid
+  name           String
+  slug           String   @unique
+  /// Last service ticket number issued (#1, #2, ...); incremented atomically.
+  ticketSequence Int      @default(0)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
 
   branding         OrganizationBranding?
   campuses         Campus[]
@@ -464,6 +466,8 @@ model ServiceTicket {
   locationId     String       @db.Uuid
   departmentId   String       @db.Uuid
   itemId         String       @db.Uuid
+  /// Ticket number within the organization, shown as #12.
+  number         Int
   title          String
   description    String?
   status         TicketStatus @default(OPEN)
@@ -496,6 +500,7 @@ model ServiceTicket {
   attachments        Attachment[]
   serviceLog         ServiceLog?
 
+  @@unique([organizationId, number])
   @@unique([organizationId, maintainxWorkOrderId])
   @@index([campusId, departmentId, status])
   @@index([itemId])
