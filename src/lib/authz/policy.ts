@@ -225,3 +225,25 @@ export function computeAccessibleCampusIds(
   }
   return lookup.allCampusIds.filter((id) => ids.has(id));
 }
+
+/** Ticket statuses after which a ticket is closed. */
+export const closedTicketStatuses = ["COMPLETED", "CANCELLED"] as const;
+
+export function isTicketClosed(status: string): boolean {
+  return (closedTicketStatuses as readonly string[]).includes(status);
+}
+
+/**
+ * Commenters and above may comment on tickets they can see. Someone who may
+ * only submit tickets (a viewer with ticket submission) may still comment on
+ * tickets they reported, so they can answer questions about them.
+ */
+export function canCommentOnTicket(
+  actor: Actor,
+  ticket: ScopedResource & { reporterId: string | null },
+): boolean {
+  return (
+    can(actor, "ticket:comment", ticket) ||
+    (ticket.reporterId === actor.id && can(actor, "ticket:submit", ticket))
+  );
+}

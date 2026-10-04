@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   can,
+  canCommentOnTicket,
   canManageGrantScope,
   canManageUser,
   effectiveLevel,
@@ -299,5 +300,33 @@ describe("grant and user administration", () => {
   it("non-admins manage no accounts", () => {
     const editor = actor([grant({ level: "EDITOR", scopeType: "ORGANIZATION" })]);
     expect(canManageUser(editor, { organizationId: ORG, grants: [] })).toBe(false);
+  });
+});
+
+describe("ticket comments", () => {
+  const ticket = { ...hneKitchenOven, reporterId: "user-1" };
+  const someoneElses = { ...hneKitchenOven, reporterId: "user-2" };
+
+  it("lets commenters comment on any ticket they can see", () => {
+    const commenter = actor([grant({ level: "COMMENTER", scopeType: "ORGANIZATION" })]);
+    expect(canCommentOnTicket(commenter, someoneElses)).toBe(true);
+  });
+
+  it("lets ticket submitters comment only on their own tickets", () => {
+    const submitter = actor([
+      grant({
+        level: "VIEWER",
+        scopeType: "DEPARTMENT",
+        departmentId: FOOD_SERVICE,
+        canSubmitTickets: true,
+      }),
+    ]);
+    expect(canCommentOnTicket(submitter, ticket)).toBe(true);
+    expect(canCommentOnTicket(submitter, someoneElses)).toBe(false);
+  });
+
+  it("does not let plain viewers comment, even on tickets they reported", () => {
+    const viewer = actor([grant({ level: "VIEWER", scopeType: "ORGANIZATION" })]);
+    expect(canCommentOnTicket(viewer, ticket)).toBe(false);
   });
 });
