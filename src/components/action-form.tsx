@@ -1,6 +1,13 @@
 "use client";
 
-import { useActionState, type ReactNode } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { initialFormState, type FormState } from "@/lib/forms/state";
 import { buttonClass } from "./ui";
 
@@ -9,6 +16,11 @@ type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 /**
  * A form bound to a server action, with a pending state and an announced
  * result. Field errors are listed by field label so they never rely on color.
+ *
+ * Submitting through onSubmit keeps what the user typed when the server
+ * reports errors (React would otherwise reset the form); the form is cleared
+ * only after a success, unless `resetOnSuccess` is false. Without JavaScript
+ * the plain form action still works.
  */
 export function ActionForm({
   action,
@@ -17,6 +29,7 @@ export function ActionForm({
   fieldLabels = {},
   variant = "primary",
   className = "flex flex-col gap-3",
+  resetOnSuccess = true,
   children,
 }: {
   action: Action;
@@ -25,15 +38,27 @@ export function ActionForm({
   fieldLabels?: Record<string, string>;
   variant?: "primary" | "secondary" | "danger";
   className?: string;
+  resetOnSuccess?: boolean;
   children?: ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(action, initialFormState);
+  const formRef = useRef<HTMLFormElement>(null);
   const fieldErrors = Object.entries(state.fieldErrors ?? {}).filter(
     (entry): entry is [string, string[]] => !!entry[1]?.length,
   );
 
+  useEffect(() => {
+    if (state.success && resetOnSuccess) formRef.current?.reset();
+  }, [state, resetOnSuccess]);
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(() => formAction(formData));
+  }
+
   return (
-    <form action={formAction} className={className}>
+    <form ref={formRef} action={formAction} onSubmit={onSubmit} className={className}>
       {children}
       {state.error ? (
         <div role="alert" className="border-bad text-bad rounded-theme border p-2">
