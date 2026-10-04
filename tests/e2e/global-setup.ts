@@ -4,7 +4,15 @@ import { hash } from "argon2";
 import pg from "pg";
 import { PrismaClient } from "../../src/generated/prisma/client.ts";
 import { seed } from "../../prisma/seed/run.ts";
-import { accounts, brandedOrganization, E2E_DATABASE_URL, ids, items } from "./fixtures.ts";
+import {
+  accounts,
+  brandedOrganization,
+  BULK_ITEM_COUNT,
+  E2E_DATABASE_URL,
+  ids,
+  items,
+  serialField,
+} from "./fixtures.ts";
 
 /**
  * Rebuilds the e2e database: create it if needed, apply migrations, wipe all
@@ -59,6 +67,7 @@ async function loadFixtures(prisma: PrismaClient) {
   const org = await prisma.organization.findFirstOrThrow({ where: { slug: "hume" } });
   const hlk = await prisma.campus.findFirstOrThrow({ where: { code: "HLK" } });
   const hne = await prisma.campus.findFirstOrThrow({ where: { code: "HNE" } });
+  const hsc = await prisma.campus.findFirstOrThrow({ where: { code: "HSC" } });
   const audio = await prisma.category.findFirstOrThrow({ where: { name: "Audio" } });
   const good = await prisma.itemCondition.findFirstOrThrow({
     where: { organizationId: org.id, isDefault: true },
@@ -69,6 +78,7 @@ async function loadFixtures(prisma: PrismaClient) {
     data: [
       { id: ids.meadowRanch, organizationId, campusId: hlk.id, name: "Meadow Ranch", code: "MR" },
       { id: ids.hneMain, organizationId, campusId: hne.id, name: "Main Auditorium" },
+      { id: ids.hscWarehouse, organizationId, campusId: hsc.id, name: "Warehouse" },
     ],
   });
   await prisma.department.create({
@@ -77,7 +87,11 @@ async function loadFixtures(prisma: PrismaClient) {
       organizationId,
       name: "Production",
       locations: {
-        create: [{ locationId: ids.meadowRanch }, { locationId: ids.hneMain }],
+        create: [
+          { locationId: ids.meadowRanch },
+          { locationId: ids.hneMain },
+          { locationId: ids.hscWarehouse },
+        ],
       },
     },
   });
@@ -103,9 +117,26 @@ async function loadFixtures(prisma: PrismaClient) {
       },
     ],
   });
+  const cabling = await prisma.category.findFirstOrThrow({ where: { name: "Cabling" } });
+  await prisma.item.createMany({
+    data: Array.from({ length: BULK_ITEM_COUNT }, (_, index) => ({
+      code: `HSC-${String(index + 1).padStart(6, "0")}`,
+      name: `XLR cable ${String(index + 1).padStart(3, "0")}`,
+      organizationId,
+      campusId: hsc.id,
+      locationId: ids.hscWarehouse,
+      departmentId: ids.production,
+      categoryId: cabling.id,
+      conditionId: good.id,
+    })),
+  });
   await prisma.campus.updateMany({
     where: { id: { in: [hlk.id, hne.id] } },
     data: { itemSequence: 1 },
+  });
+  await prisma.campus.update({ where: { id: hsc.id }, data: { itemSequence: BULK_ITEM_COUNT } });
+  await prisma.fieldDefinition.create({
+    data: { organizationId, key: serialField.key, label: serialField.label, type: "TEXT" },
   });
 
   const user = async (

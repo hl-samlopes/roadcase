@@ -12,7 +12,14 @@ export const ids = {
   production: "0190a000-0000-7000-8000-000000000003",
   hlkItem: "0190a000-0000-7000-8000-000000000011",
   hneItem: "0190a000-0000-7000-8000-000000000012",
+  hscWarehouse: "0190a000-0000-7000-8000-000000000004",
 };
+
+/** Custom field present in the e2e organization. */
+export const serialField = { key: "f_serial", label: "Serial number" };
+
+/** Extra HSC items so the inventory list has more than one page. */
+export const BULK_ITEM_COUNT = 55;
 
 export const items = {
   hlk: { id: ids.hlkItem, code: "HLK-000001", name: "Wireless mic kit" },
