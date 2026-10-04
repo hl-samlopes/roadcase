@@ -126,7 +126,29 @@ const itemDetailSelect = {
   },
   serviceLogs: {
     orderBy: { serviceDate: "desc" },
-    select: { id: true, serviceDate: true, serviceType: true, cost: true, notes: true },
+    select: {
+      id: true,
+      serviceDate: true,
+      serviceType: true,
+      cost: true,
+      notes: true,
+      ticket: { select: { id: true, number: true } },
+    },
+  },
+  serviceTickets: {
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      number: true,
+      title: true,
+      status: true,
+      createdAt: true,
+      organizationId: true,
+      campusId: true,
+      locationId: true,
+      departmentId: true,
+    },
   },
 } as const satisfies Prisma.ItemSelect;
 

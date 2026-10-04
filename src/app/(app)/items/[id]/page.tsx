@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { Barcode } from "@/components/barcode";
+import { StatusBadge } from "@/components/status-badge";
 import { buttonClass, Card, PageHeader, TextField } from "@/components/ui";
 import { can, requireUser } from "@/lib/authz";
 import { attachmentUrl } from "@/lib/data/attachments";
@@ -20,8 +21,11 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
   const user = await requireUser();
   const item = await getItem(user, (await params).id);
   if (!item) notFound();
-  const { created, saved } = await searchParams;
+  const { created, saved, ticket: openedTicket } = await searchParams;
   const editable = can(user, "item:update", item);
+  const canReport = can(user, "ticket:submit", item);
+  // Closed tickets keep the home they had, so check each one.
+  const tickets = item.serviceTickets.filter((ticket) => can(user, "ticket:read", ticket));
   const fields = await activeFields(user.organizationId);
   const custom = (item.customFields ?? {}) as Record<string, unknown>;
 
@@ -53,6 +57,11 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
       </div>
       <PageHeader title={item.name}>
         <div className="flex flex-wrap gap-2">
+          {canReport ? (
+            <Link href={`/tickets/new?item=${item.id}`} className={buttonClass("secondary")}>
+              Report a problem
+            </Link>
+          ) : null}
           <Link href={`/items/labels?id=${item.id}`} className={buttonClass("secondary")}>
             Print label
           </Link>
@@ -66,6 +75,9 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
       {created === "1" || saved === "1" ? (
         <p role="status" className="rounded-theme border-border bg-surface border p-2">
           Done: {created === "1" ? `created ${item.code}.` : "changes saved."}
+          {typeof openedTicket === "string" && /^\d+$/.test(openedTicket)
+            ? ` Repair ticket #${openedTicket} was opened.`
+            : ""}
         </p>
       ) : null}
 
@@ -190,6 +202,24 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
             ) : null}
           </Card>
 
+          <Card title="Tickets">
+            {tickets.length === 0 ? (
+              <p className="text-muted">No tickets.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {tickets.map((ticket) => (
+                  <li key={ticket.id} className="flex flex-wrap items-center gap-2">
+                    <Link href={`/tickets/${ticket.id}`} className="text-accent hover:underline">
+                      #{ticket.number} {ticket.title}
+                    </Link>
+                    <StatusBadge status={ticket.status} />
+                    <span className="text-muted">{formatDate(ticket.createdAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
           <Card title="Service history">
             {item.serviceLogs.length === 0 ? (
               <p className="text-muted">No service recorded yet.</p>
@@ -201,6 +231,7 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
                     <th className="p-2">Type</th>
                     <th className="p-2">Cost</th>
                     <th className="p-2">Notes</th>
+                    <th className="p-2">Ticket</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -210,6 +241,16 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
                       <td className="p-2">{log.serviceType}</td>
                       <td className="p-2">{formatMoney(log.cost)}</td>
                       <td className="p-2">{log.notes}</td>
+                      <td className="p-2">
+                        {log.ticket ? (
+                          <Link
+                            href={`/tickets/${log.ticket.id}`}
+                            className="text-accent hover:underline"
+                          >
+                            #{log.ticket.number}
+                          </Link>
+                        ) : null}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
