@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { E2E_DATABASE_URL } from "./tests/e2e/fixtures.ts";
+import { E2E_BUCKET, E2E_DATABASE_URL } from "./tests/e2e/fixtures.ts";
 
 // A dedicated dev server and database so tests never touch `npm run dev` data.
 const PORT = Number(process.env.E2E_PORT ?? 3100);
@@ -27,6 +27,8 @@ export default defineConfig({
       AUTH_TRUST_HOST: "true",
       // Two organizations exist in the e2e data; plain /sign-in uses this one.
       DEFAULT_ORGANIZATION_SLUG: "hume",
+      S3_BUCKET: E2E_BUCKET,
+      S3_PUBLIC_BASE_URL: `http://localhost:9000/${E2E_BUCKET}`,
     },
   },
 });

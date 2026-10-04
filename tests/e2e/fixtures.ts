@@ -6,6 +6,9 @@
 export const E2E_DATABASE_URL =
   process.env.E2E_DATABASE_URL ?? "postgresql://roadcase:roadcase@localhost:5432/roadcase_e2e";
 
+/** Test uploads go to their own bucket, emptied by global setup. */
+export const E2E_BUCKET = "roadcase-e2e";
+
 export const ids = {
   meadowRanch: "0190a000-0000-7000-8000-000000000001",
   hneMain: "0190a000-0000-7000-8000-000000000002",
@@ -55,4 +58,16 @@ export const brandedOrganization = {
   signInHeadline: "Welcome to Northwind",
   signInMessage: "Use your staff account to sign in.",
   lightAccent: "#7A1FA2",
+};
+
+/**
+ * An organization whose appearance the Settings > Appearance tests change, so
+ * they never affect what other tests see.
+ */
+export const appearanceOrganization = {
+  slug: "fieldhouse",
+  name: "Fieldhouse Camps",
+  campusCode: "FLD",
+  admin: { username: "fh-admin", password: "e2e-fh-admin-pass-1" },
+  viewer: { username: "fh-viewer", password: "e2e-fh-viewer-pass-1" },
 };

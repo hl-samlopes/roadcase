@@ -1,4 +1,12 @@
 import { execFileSync } from "node:child_process";
+import {
+  CreateBucketCommand,
+  DeleteObjectsCommand,
+  HeadBucketCommand,
+  ListObjectsV2Command,
+  PutBucketPolicyCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { hash } from "argon2";
 import pg from "pg";
@@ -6,8 +14,10 @@ import { PrismaClient } from "../../src/generated/prisma/client.ts";
 import { seed } from "../../prisma/seed/run.ts";
 import {
   accounts,
+  appearanceOrganization,
   brandedOrganization,
   BULK_ITEM_COUNT,
+  E2E_BUCKET,
   E2E_DATABASE_URL,
   existingTicket,
   ids,
@@ -31,6 +41,8 @@ export default async function globalSetup() {
   const exists = await admin.query("select 1 from pg_database where datname = $1", [databaseName]);
   if (exists.rowCount === 0) await admin.query(`create database "${databaseName}"`);
   await admin.end();
+
+  await resetBucket();
 
   execFileSync("npx", ["prisma", "migrate", "deploy"], {
     env: { ...process.env, DATABASE_URL: E2E_DATABASE_URL },
@@ -61,6 +73,51 @@ export default async function globalSetup() {
     await loadFixtures(prisma);
   } finally {
     await prisma.$disconnect();
+  }
+}
+
+/** Creates or empties the e2e bucket; its branding/ prefix is public like in dev. */
+async function resetBucket() {
+  try {
+    process.loadEnvFile();
+  } catch {}
+  const s3 = new S3Client({
+    endpoint: process.env.S3_ENDPOINT ?? "http://localhost:9000",
+    region: process.env.S3_REGION ?? "us-east-1",
+    forcePathStyle: true,
+    credentials: {
+      accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "roadcase",
+      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "roadcase-dev-secret",
+    },
+  });
+  const exists = await s3
+    .send(new HeadBucketCommand({ Bucket: E2E_BUCKET }))
+    .then(() => true)
+    .catch(() => false);
+  if (!exists) await s3.send(new CreateBucketCommand({ Bucket: E2E_BUCKET }));
+  await s3.send(
+    new PutBucketPolicyCommand({
+      Bucket: E2E_BUCKET,
+      Policy: JSON.stringify({
+        Version: "2012-10-17",
+        Statement: [
+          {
+            Effect: "Allow",
+            Principal: { AWS: ["*"] },
+            Action: ["s3:GetObject"],
+            Resource: [`arn:aws:s3:::${E2E_BUCKET}/branding/*`],
+          },
+        ],
+      }),
+    }),
+  );
+  for (;;) {
+    const listed = await s3.send(new ListObjectsV2Command({ Bucket: E2E_BUCKET }));
+    const keys = (listed.Contents ?? []).flatMap((object) =>
+      object.Key ? [{ Key: object.Key }] : [],
+    );
+    if (keys.length === 0) break;
+    await s3.send(new DeleteObjectsCommand({ Bucket: E2E_BUCKET, Delete: { Objects: keys } }));
   }
 }
 
@@ -243,6 +300,32 @@ async function loadFixtures(prisma: PrismaClient) {
       events: { create: { type: "CREATED", actorId: admin.id, toStatus: "OPEN" } },
     },
   });
+
+  const fieldhouse = await prisma.organization.create({
+    data: {
+      slug: appearanceOrganization.slug,
+      name: appearanceOrganization.name,
+      branding: { create: {} },
+      campuses: { create: { code: appearanceOrganization.campusCode, name: "Fieldhouse" } },
+    },
+  });
+  for (const [account, displayName, level] of [
+    [appearanceOrganization.admin, "Fieldhouse Admin", "ADMIN"],
+    [appearanceOrganization.viewer, "Fieldhouse Viewer", "VIEWER"],
+  ] as const) {
+    await prisma.user.create({
+      data: {
+        organizationId: fieldhouse.id,
+        username: account.username,
+        passwordHash: await hash(account.password),
+        displayName,
+        email: `${account.username}@example.com`,
+        grants: {
+          create: { organizationId: fieldhouse.id, level, scopeType: "ORGANIZATION" },
+        },
+      },
+    });
+  }
 
   await prisma.organization.create({
     data: {
