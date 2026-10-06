@@ -99,16 +99,16 @@ Decided Oct 6, 2026: one-way sync, built after Phase 4. Phase 2 is complete with
 - A sync log page shows each push and webhook with its result, and failed syncs can be retried.
 - Done when: one-way sync works end to end against a MaintainX test workspace (or a faithful stand-in), and a sync failure never blocks working in Roadcase.
 
-## Phase 1 follow-ups (schedule any time)
+## Phase 1 follow-ups (done Oct 6, 2026)
 
-Not started in Phase 1; each is small and independent:
+All six are built, on branch `phase2/followups`:
 
-- item deletion (and when it's allowed)
-- bulk edit
-- editing categories and subcategories in Settings
-- logging service directly without a ticket
-- camera barcode scanning on phones, using the browser's BarcodeDetector where available
-- an assign form that shows only the fields for the chosen assignee type
+- [x] item deletion: only for items with no history (never on a check-out, no tickets, no service logs); others are retired by changing their condition
+- [x] bulk edit: category, home or condition for many items at once, from the inventory list
+- [x] editing categories and subcategories in Settings > Categories
+- [x] logging service directly without a ticket, on the item page
+- [x] camera barcode scanning on phones, using the browser's BarcodeDetector where available
+- [x] an assign form that shows only the fields for the chosen assignee type
 
 ## Out of scope for Phase 2
 
