@@ -19,6 +19,10 @@ const conditionSchema = z.object({
     .literal("on")
     .optional()
     .transform((value) => value === "on"),
+  availableForCheckout: z
+    .literal("on")
+    .optional()
+    .transform((value) => value === "on"),
 });
 
 /** Conditions are organization-wide, so only organization admins manage them. */

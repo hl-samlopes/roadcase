@@ -57,6 +57,11 @@ export default async function ConditionsPage() {
                     Starts a repair ticket
                   </span>
                 ) : null}
+                {condition.availableForCheckout ? (
+                  <span className="rounded-theme border-border border px-1.5">
+                    Available for check-out
+                  </span>
+                ) : null}
                 <span className="text-muted">
                   {condition._count.items} item{condition._count.items === 1 ? "" : "s"}
                 </span>
@@ -80,6 +85,12 @@ export default async function ConditionsPage() {
                   name="startsRepairTicket"
                   id={`repair-${condition.id}`}
                   defaultChecked={condition.startsRepairTicket}
+                />
+                <CheckboxField
+                  label="Items in this condition can go out on a check-out"
+                  name="availableForCheckout"
+                  id={`checkout-${condition.id}`}
+                  defaultChecked={condition.availableForCheckout}
                 />
               </ActionForm>
               <div className="border-border mt-3 flex flex-wrap gap-2 border-t pt-3">
@@ -139,6 +150,11 @@ export default async function ConditionsPage() {
             label="Setting an item to this condition starts a repair ticket"
             name="startsRepairTicket"
             id="new-condition-repair"
+          />
+          <CheckboxField
+            label="Items in this condition can go out on a check-out"
+            name="availableForCheckout"
+            id="new-condition-checkout"
           />
         </ActionForm>
       </Card>

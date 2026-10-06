@@ -28,7 +28,8 @@ const sections = [
   {
     href: "/settings/conditions",
     title: "Item conditions",
-    description: "The conditions equipment can be in, and which start repair tickets.",
+    description:
+      "The conditions equipment can be in, which start repair tickets, and which can go out on check-outs.",
     organizationAdminOnly: true,
   },
   {

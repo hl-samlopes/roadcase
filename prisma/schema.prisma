@@ -105,13 +105,15 @@ enum SignInLogoPlacement {
 // ---------------------------------------------------------------------------
 
 model Organization {
-  id             String   @id @default(uuid(7)) @db.Uuid
-  name           String
-  slug           String   @unique
+  id               String   @id @default(uuid(7)) @db.Uuid
+  name             String
+  slug             String   @unique
   /// Last service ticket number issued (#1, #2, ...); incremented atomically.
-  ticketSequence Int      @default(0)
-  createdAt      DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  ticketSequence   Int      @default(0)
+  /// Last check-out number issued; incremented atomically.
+  checkoutSequence Int      @default(0)
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
 
   branding         OrganizationBranding?
   campuses         Campus[]
@@ -130,6 +132,7 @@ model Organization {
   jobFailures      JobFailure[]
   sentEmails       SentEmail[]
   slackWebhooks    SlackWebhook[]
+  checkouts        Checkout[]
 }
 
 model Campus {
@@ -152,6 +155,7 @@ model Campus {
   permissionGrants PermissionGrant[]
   userPreferences  UserPreference[]
   slackWebhooks    SlackWebhook[]
+  checkouts        Checkout[]
 
   @@unique([organizationId, code])
   @@unique([id, organizationId])
@@ -253,6 +257,9 @@ model User {
   serviceLogsCreated ServiceLog[]
   brandingUpdates    OrganizationBranding[]
   slackWebhooksAdded SlackWebhook[]
+  checkoutsAsStaff   Checkout[]             @relation("CheckoutStaffRep")
+  checkoutsCreated   Checkout[]             @relation("CheckoutCreatedBy")
+  checkoutLinesAdded CheckoutLine[]
 
   @@unique([organizationId, username])
   @@unique([organizationId, email])
@@ -324,21 +331,24 @@ model Subcategory {
 /// Organization-defined item condition (for example Good or Needs repair).
 /// Deleting one that items use archives it instead.
 model ItemCondition {
-  id                 String    @id @default(uuid(7)) @db.Uuid
-  organizationId     String    @db.Uuid
-  label              String
-  position           Int       @default(0)
+  id                   String    @id @default(uuid(7)) @db.Uuid
+  organizationId       String    @db.Uuid
+  label                String
+  position             Int       @default(0)
   /// Condition given to new items. Exactly one active condition per
   /// organization is the default (kept by the settings actions).
-  isDefault          Boolean   @default(false)
+  isDefault            Boolean   @default(false)
   /// Setting an item to this condition opens a service ticket (step 5).
-  startsRepairTicket Boolean   @default(false)
-  archivedAt         DateTime? @db.Timestamptz(3)
-  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
+  startsRepairTicket   Boolean   @default(false)
+  /// Items in this condition can be added to a guest check-out.
+  availableForCheckout Boolean   @default(false)
+  archivedAt           DateTime? @db.Timestamptz(3)
+  createdAt            DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  items        Item[]
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  items         Item[]
+  checkoutLines CheckoutLine[]
 
   @@unique([organizationId, label])
   @@unique([id, organizationId])
@@ -405,6 +415,7 @@ model Item {
   serviceTickets     ServiceTicket[]
   serviceLogs        ServiceLog[]
   rfidTags           RfidTag[]
+  checkoutLines      CheckoutLine[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, maintainxAssetId])
@@ -717,4 +728,76 @@ model SlackWebhook {
   createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
+}
+
+enum CheckoutStatus {
+  DRAFT
+  AWAITING_SIGNATURES
+  OUT
+  PARTIALLY_RETURNED
+  RETURNED
+  CANCELLED
+}
+
+/// Equipment lent to a guest group under a signed contract. Belongs to one
+/// campus; every item on it comes from that campus.
+model Checkout {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  organizationId String         @db.Uuid
+  campusId       String         @db.Uuid
+  /// Check-out number within the organization, shown as #12.
+  number         Int
+  status         CheckoutStatus @default(DRAFT)
+  groupName      String
+  guestRepName   String
+  /// Stored lowercase.
+  guestRepEmail  String
+  guestRepPhone  String
+  /// The staff member responsible for the check-out (signs the contract).
+  staffRepId     String?        @db.Uuid
+  /// Calendar dates (no time of day).
+  dateOut        DateTime       @db.Date
+  dateDue        DateTime       @db.Date
+  notes          String?
+  createdById    String?        @db.Uuid
+  cancelledAt    DateTime?      @db.Timestamptz(3)
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime       @updatedAt @db.Timestamptz(3)
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  campus       Campus         @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  staffRep     User?          @relation("CheckoutStaffRep", fields: [staffRepId], references: [id], onDelete: SetNull)
+  createdBy    User?          @relation("CheckoutCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  lines        CheckoutLine[]
+
+  @@unique([organizationId, number])
+  @@index([campusId, status])
+}
+
+/// One item on a check-out, with its optional fee and return details.
+model CheckoutLine {
+  id                String    @id @default(uuid(7)) @db.Uuid
+  organizationId    String    @db.Uuid
+  checkoutId        String    @db.Uuid
+  itemId            String    @db.Uuid
+  /// Optional rental fee; fees are never required.
+  fee               Decimal?  @db.Decimal(12, 2)
+  /// True while this line keeps the item off other check-outs: its check-out
+  /// is active (not returned or cancelled) and the item isn't back yet. A
+  /// partial unique index allows one such line per item.
+  holdsItem         Boolean   @default(true)
+  returnedAt        DateTime? @db.Timestamptz(3)
+  returnConditionId String?   @db.Uuid
+  returnNotes       String?
+  addedById         String?   @db.Uuid
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+
+  checkout        Checkout       @relation(fields: [checkoutId], references: [id], onDelete: Cascade)
+  item            Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  returnCondition ItemCondition? @relation(fields: [returnConditionId], references: [id], onDelete: SetNull)
+  addedBy         User?          @relation(fields: [addedById], references: [id], onDelete: SetNull)
+
+  @@unique([checkoutId, itemId])
+  @@index([itemId])
 }

@@ -105,6 +105,7 @@ export async function seed(prisma: PrismaClient, env: SeedEnv, log: (message: st
           position,
           isDefault: condition.isDefault ?? false,
           startsRepairTicket: condition.startsRepairTicket ?? false,
+          availableForCheckout: condition.availableForCheckout ?? false,
         })),
       });
       log(`Item conditions: ${itemConditions.map((c) => c.label).join(", ")}`);

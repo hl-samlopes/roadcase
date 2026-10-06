@@ -43,10 +43,11 @@ export const itemConditions: {
   label: string;
   isDefault?: boolean;
   startsRepairTicket?: boolean;
+  availableForCheckout?: boolean;
 }[] = [
-  { label: "New" },
-  { label: "Good", isDefault: true },
-  { label: "Fair" },
+  { label: "New", availableForCheckout: true },
+  { label: "Good", isDefault: true, availableForCheckout: true },
+  { label: "Fair", availableForCheckout: true },
   { label: "Poor" },
   { label: "Needs repair", startsRepairTicket: true },
   { label: "Out of service" },

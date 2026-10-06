@@ -10,6 +10,14 @@ test("organization admins add, rename and delete item conditions", async ({ page
   // Defaults from the seed, with Good as the default condition.
   await expect(page.getByRole("heading", { name: "Needs repair" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Make Good the default" })).toHaveCount(0);
+  // New, Good and Fair can go out on check-outs; the others can't.
+  const checkoutBox = (label: string) =>
+    page
+      .getByRole("listitem")
+      .filter({ has: page.getByRole("heading", { name: label, exact: true }) })
+      .getByLabel("Items in this condition can go out on a check-out");
+  await expect(checkoutBox("Good")).toBeChecked();
+  await expect(checkoutBox("Needs repair")).not.toBeChecked();
 
   const add = page.locator("section", {
     has: page.getByRole("heading", { name: "Add a condition" }),
