@@ -33,6 +33,12 @@ const sections = [
     organizationAdminOnly: true,
   },
   {
+    href: "/settings/contracts",
+    title: "Contract templates",
+    description: "Each campus's check-out contract, with merge fields and saved versions.",
+    organizationAdminOnly: false,
+  },
+  {
     href: "/settings/notifications",
     title: "Notifications",
     description: "Slack channels for ticket alerts, test email, and background jobs that failed.",

@@ -484,7 +484,7 @@ async function loadNotifyOrganization(prisma: PrismaClient) {
       branding: { create: {} },
       campuses: {
         create: [
-          { id: o.north.id, code: o.north.code, name: o.north.name, itemSequence: 3 },
+          { id: o.north.id, code: o.north.code, name: o.north.name, itemSequence: 4 },
           { id: o.south.id, code: o.south.code, name: o.south.name, itemSequence: 1 },
         ],
       },
@@ -522,6 +522,7 @@ async function loadNotifyOrganization(prisma: PrismaClient) {
       { ...o.micStand, ...north, conditionId: good.id },
       { ...o.oldDiBox, ...north, conditionId: poor.id },
       { ...o.southMixer, ...south, conditionId: good.id },
+      { ...o.bandCamp.item, ...north, conditionId: good.id },
     ].map((item) => ({
       ...item,
       organizationId,
@@ -554,4 +555,31 @@ async function loadNotifyOrganization(prisma: PrismaClient) {
       },
     });
   }
+
+  // A draft check-out for contract previews. Its number is far from the
+  // sequence the check-out tests use (#1, #2), which stays at 0 here.
+  const admin = await prisma.user.findFirstOrThrow({
+    where: { organizationId, username: o.admin.username },
+  });
+  const speaker = await prisma.item.findFirstOrThrow({
+    where: { organizationId, code: o.bandCamp.item.code },
+  });
+  await prisma.checkout.create({
+    data: {
+      id: o.bandCamp.id,
+      organizationId,
+      campusId: o.north.id,
+      number: o.bandCamp.number,
+      groupName: o.bandCamp.group,
+      guestRepName: "Riley Band",
+      guestRepEmail: "riley@example.com",
+      guestRepPhone: "(555) 222-3333",
+      staffRepId: admin.id,
+      dateOut: new Date("2030-03-01T00:00:00Z"),
+      dateDue: new Date("2030-03-05T00:00:00Z"),
+      lines: {
+        create: { organizationId, itemId: speaker.id, fee: o.bandCamp.fee, addedById: admin.id },
+      },
+    },
+  });
 }

@@ -81,6 +81,14 @@ export const notifyOrganization = {
   micStand: { code: "SGN-000002", name: "Mic stand" },
   oldDiBox: { code: "SGN-000003", name: "Old DI box" },
   southMixer: { code: "SGS-000001", name: "South mixer" },
+  /** A draft check-out made by global setup for contract previews (numbered apart from #1, #2). */
+  bandCamp: {
+    id: "0190a000-0000-7000-8000-000000000037",
+    number: 100,
+    group: "Band camp",
+    item: { code: "SGN-000004", name: "Preview speaker" },
+    fee: "30.00",
+  },
   admin: { username: "sg-admin", password: "e2e-sg-admin-pass-1" },
   /** Editor at Signal North: gets new-ticket emails. */
   editor: { username: "sg-editor", password: "e2e-sg-editor-pass-1" },
