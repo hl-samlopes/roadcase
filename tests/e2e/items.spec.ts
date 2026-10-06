@@ -43,8 +43,11 @@ test("an editor adds an item with a photo and custom field, then finds it by sca
 
   // A barcode scanner types the code and presses Enter, from any page; "/" focuses the field.
   await page.goto("/service-log");
-  await page.keyboard.press("/");
-  await expect(page.getByLabel("Scan or enter an item code")).toBeFocused();
+  // Retried: the shortcut listens once the page's scripts have loaded, which can lag under load.
+  await expect(async () => {
+    await page.keyboard.press("/");
+    await expect(page.getByLabel("Scan or enter an item code")).toBeFocused({ timeout: 500 });
+  }).toPass({ timeout: 10_000 });
   await page.keyboard.type(code!.toLowerCase());
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/items\/[0-9a-f-]{36}$/);

@@ -29,12 +29,14 @@ test("an organization admin adds a location and links a new department to it", a
   await departments.getByLabel("Lakeside Pavilion").check();
   await departments.getByRole("button", { name: "Add department" }).last().click();
   await expect(page.getByText("Added Food Service.")).toBeVisible();
-  const food = page.getByRole("row", { name: /Food Service/ });
+  const food = page
+    .getByRole("table", { name: "Departments" })
+    .getByRole("row", { name: /Food Service/ });
   await expect(food).toContainText("Lakeside Pavilion · HSC");
 
   // Editing in place: rename, and the row updates.
   await departments.getByRole("button", { name: "Edit Food Service" }).click();
-  await departments.getByLabel("Name").first().fill("Food Services");
+  await departments.locator(`input[id^="department-name-"]`).fill("Food Services");
   await departments.getByRole("button", { name: "Save Food Service" }).click();
   await expect(page.getByText("Done: Saved Food Services.")).toBeVisible();
 });
