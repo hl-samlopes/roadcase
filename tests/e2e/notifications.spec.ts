@@ -28,13 +28,13 @@ async function slackPosts(path: string) {
   return posts.filter((post) => post.path === path);
 }
 
-/** Email jobs not yet finished (queued, waiting to retry, or running). */
+/** Ticket email jobs not yet finished (queued, waiting to retry, or running). Other specs send other emails at the same time. */
 async function pendingEmailJobs() {
   const client = new pg.Client({ connectionString: E2E_DATABASE_URL });
   await client.connect();
   try {
     const { rows } = await client.query<{ count: string }>(
-      `select count(*) from pgboss.job where name = 'email.send' and state in ('created', 'retry', 'active')`,
+      `select count(*) from pgboss.job where name = 'email.send' and data->>'template' = 'ticket' and state in ('created', 'retry', 'active')`,
     );
     return Number(rows[0].count);
   } finally {
@@ -122,7 +122,11 @@ test("opening a ticket emails the editors who can see it and posts to Slack", as
   // once every queued email has been sent.
   await expect.poll(pendingEmailJobs, { timeout: 30_000 }).toBe(0);
   for (const account of [org.optedOut, org.southEditor, org.reporter]) {
-    expect(await inbox(account), account.username).toHaveLength(0);
+    // Only this ticket's email matters; the same people get other email from other specs.
+    const aboutTicket = (await inbox(account)).filter((m) =>
+      m.Subject.includes("Channel 6 crackles"),
+    );
+    expect(aboutTicket, account.username).toHaveLength(0);
   }
 
   // The email links to the ticket and carries the details; Slack doesn't.

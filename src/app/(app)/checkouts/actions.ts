@@ -243,16 +243,26 @@ export async function saveFeesAction(
   return { success: "Fees saved." };
 }
 
-/** Cancels a draft and releases its items for other check-outs. */
+/**
+ * Cancels a check-out that isn't out yet (a draft, or one awaiting signatures,
+ * whose unsigned contract is voided) and releases its items.
+ */
 export async function cancelCheckoutAction(
   checkoutId: string,
   _state: FormState,
   _formData: FormData,
 ): Promise<FormState> {
   const actor = await requireUser();
-  const { checkout, error } = await editableDraft(actor, checkoutId);
-  if (!checkout) return error;
+  const checkout = await getCheckout(actor, checkoutId);
+  if (!checkout || !canManageCheckout(actor, checkout)) return NOT_ALLOWED;
+  if (checkout.status !== "DRAFT" && checkout.status !== "AWAITING_SIGNATURES") {
+    return { error: "A check-out that's out can't be cancelled; check its items in instead." };
+  }
   await db.$transaction([
+    db.contract.updateMany({
+      where: { checkoutId: checkout.id, voidedAt: null, signedAt: null },
+      data: { voidedAt: new Date() },
+    }),
     db.checkout.update({
       where: { id: checkout.id },
       data: { status: "CANCELLED", cancelledAt: new Date() },

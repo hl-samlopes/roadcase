@@ -14,6 +14,7 @@ import { hash } from "argon2";
 import pg from "pg";
 import { PrismaClient } from "../../src/generated/prisma/client.ts";
 import { seed } from "../../prisma/seed/run.ts";
+import { placeholderTemplate } from "../../src/lib/contracts/placeholder.ts";
 import {
   accounts,
   appearanceOrganization,
@@ -134,12 +135,7 @@ async function startWorker() {
   const log = openSync("test-results/e2e-worker.log", "w");
   const worker = spawn(
     process.execPath,
-    [
-      "--conditions=react-server",
-      "--import",
-      "./src/worker/resolve-hooks.ts",
-      "src/worker/main.ts",
-    ],
+    ["--import", "./src/worker/resolve-hooks.ts", "src/worker/main.ts"],
     {
       env: {
         ...process.env,
@@ -579,6 +575,41 @@ async function loadNotifyOrganization(prisma: PrismaClient) {
       dateDue: new Date("2030-03-05T00:00:00Z"),
       lines: {
         create: { organizationId, itemId: speaker.id, fee: o.bandCamp.fee, addedById: admin.id },
+      },
+    },
+  });
+
+  // South has a template (the placeholder) and a draft to prepare and sign.
+  const southEditor = await prisma.user.findFirstOrThrow({
+    where: { organizationId, username: o.southEditor.username },
+  });
+  const mixer = await prisma.item.findFirstOrThrow({
+    where: { organizationId, code: o.southMixer.code },
+  });
+  await prisma.contractTemplateVersion.create({
+    data: {
+      organizationId,
+      campusId: o.south.id,
+      version: 1,
+      content: placeholderTemplate,
+      createdById: admin.id,
+    },
+  });
+  await prisma.checkout.create({
+    data: {
+      id: o.choir.id,
+      organizationId,
+      campusId: o.south.id,
+      number: o.choir.number,
+      groupName: o.choir.group,
+      guestRepName: o.choir.guestName,
+      guestRepEmail: o.choir.guestEmail,
+      guestRepPhone: "(555) 444-5555",
+      staffRepId: southEditor.id,
+      dateOut: new Date("2030-04-01T00:00:00Z"),
+      dateDue: new Date("2030-04-03T00:00:00Z"),
+      lines: {
+        create: { organizationId, itemId: mixer.id, fee: o.choir.fee, addedById: southEditor.id },
       },
     },
   });

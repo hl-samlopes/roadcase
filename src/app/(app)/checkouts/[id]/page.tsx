@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { CheckoutStatusBadge } from "@/components/status-badge";
 import { Card, PageHeader, TextField } from "@/components/ui";
-import { canManageCheckout, requireUser } from "@/lib/authz";
+import { can, canManageCheckout, checkoutScope, requireUser } from "@/lib/authz";
+import { activeContract } from "@/lib/data/contract-records";
+import { latestTemplateVersion } from "@/lib/data/contracts";
 import {
   feeTotalCents,
   getCheckout,
@@ -21,6 +23,7 @@ import {
   updateCheckoutAction,
 } from "../actions";
 import { CheckoutDetailsFields, detailFieldLabels } from "../details-fields";
+import { ContractPanel } from "./contract-panel";
 
 export const metadata: Metadata = { title: "Check-out" };
 
@@ -33,10 +36,15 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
   const query = await searchParams;
   const q = typeof query.q === "string" ? query.q.slice(0, 100) : "";
 
-  const editable = checkout.status === "DRAFT" && canManageCheckout(user, checkout);
-  const [staff, results] = await Promise.all([
+  const canManage = canManageCheckout(user, checkout);
+  const editable = checkout.status === "DRAFT" && canManage;
+  const cancellable =
+    canManage && (checkout.status === "DRAFT" || checkout.status === "AWAITING_SIGNATURES");
+  const [staff, results, contract, template] = await Promise.all([
     editable ? staffOptions(checkout.organizationId, checkout.campusId) : [],
     editable && q ? searchItemsForCheckout(user, checkout, q) : [],
+    activeContract(checkout.organizationId, checkout.id),
+    editable ? latestTemplateVersion(checkout.organizationId, checkout.campusId) : null,
   ]);
   const totalCents = feeTotalCents(checkout.lines);
   const lineCount = checkout.lines.length;
@@ -96,6 +104,14 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
           ) : null}
         </dl>
       </Card>
+
+      <ContractPanel
+        checkout={checkout}
+        contract={contract}
+        hasTemplate={!!template}
+        canManage={canManage}
+        canAudit={can(user, "checkout:audit", checkoutScope(checkout))}
+      />
 
       {editable ? (
         <Card title="Add items">
@@ -277,20 +293,22 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
               <CheckoutDetailsFields staff={staff} values={checkout} idPrefix="edit" />
             </ActionForm>
           </Card>
-          <Card title="Cancel this check-out">
-            <p className="mb-3">
-              Cancelling releases its items for other check-outs. A cancelled check-out can&apos;t
-              be reopened.
-            </p>
-            <ActionForm
-              action={cancelCheckoutAction.bind(null, checkout.id)}
-              submitLabel={`Cancel check-out #${checkout.number}`}
-              pendingLabel="Cancelling…"
-              variant="danger"
-              className={inline}
-            />
-          </Card>
         </>
+      ) : null}
+      {cancellable ? (
+        <Card title="Cancel this check-out">
+          <p className="mb-3">
+            Cancelling releases its items for other check-outs. A cancelled check-out can&apos;t be
+            reopened.
+          </p>
+          <ActionForm
+            action={cancelCheckoutAction.bind(null, checkout.id)}
+            submitLabel={`Cancel check-out #${checkout.number}`}
+            pendingLabel="Cancelling…"
+            variant="danger"
+            className={inline}
+          />
+        </Card>
       ) : null}
     </div>
   );

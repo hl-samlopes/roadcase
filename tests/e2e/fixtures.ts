@@ -81,6 +81,15 @@ export const notifyOrganization = {
   micStand: { code: "SGN-000002", name: "Mic stand" },
   oldDiBox: { code: "SGN-000003", name: "Old DI box" },
   southMixer: { code: "SGS-000001", name: "South mixer" },
+  /** A South draft check-out to prepare and sign; the South editor is its staff representative. */
+  choir: {
+    id: "0190a000-0000-7000-8000-000000000038",
+    number: 200,
+    group: "Southside choir",
+    guestName: "Morgan Choir",
+    guestEmail: "morgan@example.com",
+    fee: "15.00",
+  },
   /** A draft check-out made by global setup for contract previews (numbered apart from #1, #2). */
   bandCamp: {
     id: "0190a000-0000-7000-8000-000000000037",
