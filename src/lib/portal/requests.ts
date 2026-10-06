@@ -53,6 +53,3 @@ export function isRequestApprover(
     })
   );
 }
-
-// Moved to ./request-labels; kept here until the pages import from there.
-export { guestRequestStatusLabels, requestStatusLabels } from "./request-labels";

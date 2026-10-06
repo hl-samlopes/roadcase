@@ -201,6 +201,26 @@ export const portalOrganization = {
     token: fixtureToken("retreat"),
     days: [9, 11],
   },
+  /** Step 2: sends a request that staff partly approve and turn into a check-out. */
+  band: {
+    id: "0190a000-0000-7000-8000-00000000006b",
+    name: "Lakeside band",
+    email: "lk-band@example.com",
+    token: fixtureToken("band"),
+    days: [30, 32],
+  },
+  /** Overlaps the band's dates, so it sees what the band's approval holds back. */
+  campers: {
+    id: "0190a000-0000-7000-8000-00000000006c",
+    name: "Lakeside campers",
+    email: "lk-campers@example.com",
+    token: fixtureToken("campers"),
+    days: [31, 33],
+  },
+  /** Runs check-outs at Lakeside but turned request emails off. */
+  quietEditor: { username: "lk-quiet", password: "e2e-lk-quiet-pass-1" },
+  /** Runs check-outs at Lakeside North only: never sees Lakeside's requests. */
+  northEditor: { username: "lk-north", password: "e2e-lk-north-pass-1" },
   /** The main photo of one SM58 (shown) and of a Lighting item (never shown). */
   sm58PhotoId: "0190a000-0000-7000-8000-000000000069",
   hiddenPhotoId: "0190a000-0000-7000-8000-00000000006a",

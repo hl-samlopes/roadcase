@@ -1,5 +1,10 @@
-import type { CheckoutStatus, TicketStatus } from "@/generated/prisma/enums.ts";
+import type {
+  CheckoutStatus,
+  EquipmentRequestStatus,
+  TicketStatus,
+} from "@/generated/prisma/enums.ts";
 import type { PortalLinkStatus } from "@/lib/authz/portal-policy";
+import { requestStatusLabels } from "@/lib/portal/request-labels";
 import { checkoutStatusLabels, portalLinkStatusLabels, ticketStatusLabels } from "@/lib/labels";
 
 /** Ticket status as text in an outlined badge; never color alone. */
@@ -39,6 +44,20 @@ export function PortalLinkBadge({ status }: { status: PortalLinkStatus | null })
       }`}
     >
       {status ? portalLinkStatusLabels[status] : "No link yet"}
+    </span>
+  );
+}
+
+/** An equipment request's status for staff; ones waiting for review stand out. */
+export function RequestStatusBadge({ status }: { status: EquipmentRequestStatus }) {
+  const waiting = status === "SUBMITTED" || status === "IN_REVIEW";
+  return (
+    <span
+      className={`rounded-theme inline-block border px-1.5 whitespace-nowrap ${
+        waiting ? "border-accent text-text font-semibold" : "border-border text-muted"
+      }`}
+    >
+      {requestStatusLabels[status]}
     </span>
   );
 }

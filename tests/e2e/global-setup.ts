@@ -785,6 +785,32 @@ async function loadPortalOrganization(prisma: PrismaClient) {
     },
   });
 
+  await prisma.user.create({
+    data: {
+      organizationId,
+      username: o.quietEditor.username,
+      passwordHash: await hash(o.quietEditor.password),
+      displayName: "Quiet Editor",
+      email: `${o.quietEditor.username}@example.com`,
+      grants: {
+        create: { organizationId, level: "EDITOR", scopeType: "CAMPUS", campusId: o.campus.id },
+      },
+      preference: { create: { emailRequestSent: false } },
+    },
+  });
+  await prisma.user.create({
+    data: {
+      organizationId,
+      username: o.northEditor.username,
+      passwordHash: await hash(o.northEditor.password),
+      displayName: "North Editor",
+      email: `${o.northEditor.username}@example.com`,
+      grants: {
+        create: { organizationId, level: "EDITOR", scopeType: "CAMPUS", campusId: o.north.id },
+      },
+    },
+  });
+
   const sequence = { [o.campus.id]: 0, [o.north.id]: 0 };
   const item = (
     name: string,
@@ -848,7 +874,7 @@ async function loadPortalOrganization(prisma: PrismaClient) {
 
   const today = Date.parse(`${dateInZone(new Date(), appTimeZone())}T00:00:00Z`);
   const day = (offset: number) => new Date(today + offset * 86_400_000);
-  for (const group of [o.youth, o.choir, o.retreat]) {
+  for (const group of [o.youth, o.choir, o.retreat, o.band, o.campers]) {
     await prisma.guestGroup.create({
       data: {
         id: group.id,

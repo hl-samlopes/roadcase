@@ -31,6 +31,8 @@ export function ActionForm({
   className = "flex flex-col gap-3",
   resetOnSuccess = true,
   id,
+  intent,
+  secondary,
   children,
 }: {
   action: Action;
@@ -42,6 +44,10 @@ export function ActionForm({
   resetOnSuccess?: boolean;
   /** Lets inputs elsewhere on the page join this form with `form={id}`. */
   id?: string;
+  /** Sent as `intent` with the main button, for actions with more than one button. */
+  intent?: string;
+  /** A second button on the same form, sending its own `intent`. */
+  secondary?: { label: string; intent: string };
   children?: ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(action, initialFormState);
@@ -56,7 +62,9 @@ export function ActionForm({
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    // Include the button that was pressed, as a plain form submission would.
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const formData = new FormData(event.currentTarget, submitter);
     startTransition(() => formAction(formData));
   }
 
@@ -82,10 +90,26 @@ export function ActionForm({
           Done: {state.success}
         </p>
       ) : null}
-      <div>
-        <button type="submit" disabled={pending} className={buttonClass(variant)}>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="submit"
+          disabled={pending}
+          className={buttonClass(variant)}
+          {...(intent ? { name: "intent", value: intent } : {})}
+        >
           {pending ? pendingLabel : submitLabel}
         </button>
+        {secondary ? (
+          <button
+            type="submit"
+            name="intent"
+            value={secondary.intent}
+            disabled={pending}
+            className={buttonClass("secondary")}
+          >
+            {secondary.label}
+          </button>
+        ) : null}
       </div>
     </form>
   );

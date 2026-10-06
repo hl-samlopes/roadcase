@@ -6,7 +6,8 @@ import { portalCatalog, portalRequest } from "@/lib/data/portal";
 import { formatDate } from "@/lib/format";
 import { kindId } from "@/lib/portal/catalog";
 import { quantityField } from "@/lib/portal/fields";
-import { guestCanEdit, guestRequestStatusLabels } from "@/lib/portal/requests";
+import { guestRequestStatusLabels } from "@/lib/portal/request-labels";
+import { decidedStatuses, guestCanEdit } from "@/lib/portal/requests";
 import { loadPortal, PortalShell, portalMetadata } from "../shell";
 import { saveRequestAction, withdrawRequestAction } from "./actions";
 import { RequestForm } from "./request-form";
@@ -30,6 +31,7 @@ export default async function PortalEquipmentPage({
     portalRequest(principal),
   ]);
   const editable = guestCanEdit(request?.status ?? null);
+  const decided = request ? decidedStatuses.includes(request.status) : false;
   const quantities = new Map(
     (request?.lines ?? []).map((line) => [
       kindId(line.categoryId, line.kindKey),
@@ -67,12 +69,19 @@ export default async function PortalEquipmentPage({
 
       {!editable && request ? (
         <section className="rounded-theme border-border bg-surface border p-4">
-          <h2 className="mb-2 text-base">What you asked for</h2>
+          <h2 className="mb-2 text-base">{decided ? "Staff's decision" : "What you asked for"}</h2>
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-border text-muted border-b text-left">
                 <th className="p-2">Item</th>
                 <th className="p-2">Asked for</th>
+                {/* Staff's numbers show only once they've sent their decision. */}
+                {decided ? (
+                  <>
+                    <th className="p-2">Approved</th>
+                    <th className="p-2">Note from staff</th>
+                  </>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -83,6 +92,12 @@ export default async function PortalEquipmentPage({
                 >
                   <td className="p-2">{line.name}</td>
                   <td className="p-2">{line.quantityRequested}</td>
+                  {decided ? (
+                    <>
+                      <td className="p-2">{line.quantityApproved ?? 0}</td>
+                      <td className="p-2">{line.staffNote ?? ""}</td>
+                    </>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
@@ -92,9 +107,15 @@ export default async function PortalEquipmentPage({
               <span className="text-muted">Your note:</span> {request.note}
             </p>
           ) : null}
+          {decided && request.staffMessage ? (
+            <p className="mt-2 whitespace-pre-line">
+              <span className="text-muted">Message from staff:</span> {request.staffMessage}
+            </p>
+          ) : null}
           <p className="mt-3">
-            Staff have started on it, so it can&apos;t be changed here. Contact your staff contact
-            for changes.
+            {decided
+              ? "Contact your staff contact if you need anything changed."
+              : "Staff have started on it, so it can't be changed here. Contact your staff contact for changes."}
           </p>
         </section>
       ) : catalog.length === 0 ? (

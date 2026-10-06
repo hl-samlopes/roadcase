@@ -9,7 +9,7 @@ import { appTimeZone } from "@/lib/checkouts/overdue";
 import { staffOptions } from "@/lib/data/checkouts";
 import { getGuestGroup } from "@/lib/data/guest-groups";
 import { formatDate } from "@/lib/format";
-import { requestStatusLabels } from "@/lib/portal/requests";
+import { requestStatusLabels } from "@/lib/portal/request-labels";
 import {
   archiveGuestGroupAction,
   copyPortalLinkAction,
@@ -161,7 +161,14 @@ export default async function GuestGroupPage({ params, searchParams }: PageProps
                 <span className="text-muted">Group&apos;s note:</span> {group.request.note}
               </p>
             ) : null}
-            <p className="text-muted mt-2">Reviewing requests opens in the next update.</p>
+            <Link
+              href={`/guests/${group.id}/request`}
+              className={`${buttonClass("secondary")} mt-2`}
+            >
+              {canManage && ["SUBMITTED", "IN_REVIEW"].includes(group.request.status)
+                ? "Review the request"
+                : "See the request"}
+            </Link>
           </>
         ) : group.request ? (
           <p>The group has started a request but hasn&apos;t sent it yet.</p>

@@ -29,6 +29,9 @@ export default async function GuestGroupsPage({ searchParams }: PageProps<"/gues
   return (
     <>
       <PageHeader title="Guest portal">
+        <Link href="/guests/requests" className={buttonClass("secondary")}>
+          Equipment requests
+        </Link>
         {manageable.length > 0 ? (
           <Link href="/guests/new" className={buttonClass("primary")}>
             New guest group

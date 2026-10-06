@@ -3,7 +3,8 @@ import Link from "next/link";
 import { buttonClass } from "@/components/ui";
 import { portalRequest } from "@/lib/data/portal";
 import { formatDate } from "@/lib/format";
-import { guestCanEdit, guestRequestStatusLabels } from "@/lib/portal/requests";
+import { guestRequestStatusLabels } from "@/lib/portal/request-labels";
+import { guestCanEdit } from "@/lib/portal/requests";
 import { loadPortal, PortalShell, portalMetadata } from "./shell";
 
 export async function generateMetadata({

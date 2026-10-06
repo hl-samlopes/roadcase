@@ -69,6 +69,24 @@ None expected. The portal reuses `@react-pdf/renderer` (input list PDF), pg-boss
 
 ## Step 2: Staff review queue and request to check-out
 
+**Done (Oct 6, 2026).**
+- **Where it lives:**
+  - Queue: `/guests/requests`.
+  - Review: `/guests/<id>/request`.
+  - Choosing items: `/guests/<id>/request/checkout`.
+- **Review rules:**
+  - "Save without sending" puts a request in review and stops the group changing it; staff's numbers stay hidden from the group until the decision is sent.
+  - A decision can be reopened until it becomes a check-out.
+  - Saves on either side check the other hasn't changed the request in the meantime.
+- **Emails:**
+  - Request emails go to everyone who runs check-outs at the campus, rechecked when sent. Each person can turn them off in Preferences.
+  - The decision email lists every line. It can't link to the portal, because links aren't stored.
+- **Check-out from a request:**
+  - Items follow Phase 2's rules: an item on any active check-out can't be chosen, whatever its dates.
+  - Each line takes at most what was approved.
+  - Once the request is a check-out, it stops reserving items (unless that check-out is cancelled).
+- **Open question:** making check-outs date-aware (bookings) would let an item go on several future check-outs. That's a later decision.
+
 - A queue under Guest portal showing submitted requests (filter by campus and status), with an email to approvers when one arrives (Phase 2 notification rules: queued in the transaction, checked with `can()` again when sent).
 - Review: approve, change quantities (with a note to the group) or decline each line, then approve or decline the request. The group is emailed the result with the notes.
 - "Create check-out draft" turns an approved request into a draft check-out for the group. Staff choose the actual items for each kind, with the Phase 2 availability checks, and the draft links back to the request.
