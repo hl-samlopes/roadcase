@@ -10,9 +10,14 @@ import type {
  * look; keep components free of hard-coded colors and fonts.
  */
 
+/**
+ * Buttons, fields and menu rows are at least 2.5rem (40px at the default text
+ * size) so they are easy to hit on tablets and phones.
+ */
+export const touchTarget = "min-h-10";
+
 export function buttonClass(variant: "primary" | "secondary" | "danger" = "primary") {
-  const base =
-    "rounded-theme px-3 py-1.5 font-semibold disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+  const base = `${touchTarget} inline-flex items-center justify-center rounded-theme px-3 py-1.5 font-semibold disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`;
   switch (variant) {
     case "primary":
       return `${base} bg-accent text-surface`;
@@ -23,8 +28,7 @@ export function buttonClass(variant: "primary" | "secondary" | "danger" = "prima
   }
 }
 
-const controlClass =
-  "rounded-theme border border-border bg-surface px-2 py-1.5 text-text focus-visible:outline-2 focus-visible:outline-accent";
+export const controlClass = `${touchTarget} rounded-theme border border-border bg-surface px-2 py-1.5 text-text focus-visible:outline-2 focus-visible:outline-accent`;
 
 export function TextField({
   label,

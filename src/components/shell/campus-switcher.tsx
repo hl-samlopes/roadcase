@@ -1,4 +1,5 @@
 import { setActiveCampusAction } from "@/app/(app)/actions";
+import { touchTarget } from "@/components/ui";
 import { Disclosure } from "./disclosure";
 
 interface Campus {
@@ -7,8 +8,7 @@ interface Campus {
   name: string;
 }
 
-const optionClass =
-  "w-full rounded-theme px-3 py-1.5 text-left hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent";
+const optionClass = `${touchTarget} w-full rounded-theme px-3 py-1.5 text-left hover:bg-bg focus-visible:outline-2 focus-visible:outline-accent`;
 
 export function CampusSwitcher({
   campuses,
@@ -23,16 +23,16 @@ export function CampusSwitcher({
 
   return (
     <Disclosure
-      summaryClassName="rounded-theme border-border bg-surface cursor-pointer list-none border px-3 py-1.5"
+      summaryClassName={`${touchTarget} rounded-theme border-border bg-surface flex cursor-pointer list-none items-center border px-3 py-1.5`}
       panelClassName="rounded-theme border-border bg-surface absolute left-0 z-20 mt-1 min-w-56 border p-1 shadow-sm"
       summary={
-        <>
+        <span>
           <span className="text-muted">Campus: </span>
           <span className="font-semibold">
             {active ? `${active.name} (${active.code})` : "All campuses"}
           </span>
           <span aria-hidden="true"> ▾</span>
-        </>
+        </span>
       }
     >
       <form action={setActiveCampusAction}>

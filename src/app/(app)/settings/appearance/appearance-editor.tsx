@@ -9,7 +9,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { buttonClass } from "@/components/ui";
+import { buttonClass, controlClass } from "@/components/ui";
 import type {
   BodyFont,
   FontPairing,
@@ -74,9 +74,6 @@ const placementLabels: Record<SignInLogoPlacement, string> = {
   CENTER: "Inside the sign-in card",
   HIDDEN: "Hidden",
 };
-
-const control =
-  "rounded-theme border border-border bg-surface px-2 py-1.5 text-text focus-visible:outline-2 focus-visible:outline-accent";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -170,7 +167,7 @@ export function AppearanceEditor({
               value={values.displayName}
               maxLength={80}
               onChange={(e) => set("displayName", e.target.value)}
-              className={control}
+              className={controlClass}
             />
           </Labeled>
         </Section>
@@ -200,7 +197,7 @@ export function AppearanceEditor({
                             aria-label={`${tokenLabels[token]} color picker, ${mode} mode`}
                             value={effective[mode][token].toLowerCase()}
                             onChange={(e) => setToken(mode, token, e.target.value.toUpperCase())}
-                            className="border-border h-8 w-10 rounded border bg-transparent"
+                            className="border-border h-10 w-10 rounded border bg-transparent"
                           />
                           <input
                             id={id}
@@ -210,7 +207,7 @@ export function AppearanceEditor({
                             onChange={(e) => setToken(mode, token, e.target.value.trim())}
                             aria-invalid={invalid || undefined}
                             aria-describedby={invalid ? `${id}-error` : undefined}
-                            className={`${control} w-28 font-mono`}
+                            className={`${controlClass} w-28 font-mono`}
                           />
                           {value ? (
                             <button
@@ -264,7 +261,7 @@ export function AppearanceEditor({
                 name="headingFont"
                 value={values.headingFont}
                 onChange={(e) => set("headingFont", e.target.value as HeadingFont | "")}
-                className={control}
+                className={controlClass}
               >
                 <option value="">Default (Inter)</option>
                 {Object.entries(headingFontLabels).map(([value, label]) => (
@@ -280,7 +277,7 @@ export function AppearanceEditor({
                 name="bodyFont"
                 value={values.bodyFont}
                 onChange={(e) => set("bodyFont", e.target.value as BodyFont | "")}
-                className={control}
+                className={controlClass}
               >
                 <option value="">Default (Krub)</option>
                 {Object.entries(bodyFontLabels).map(([value, label]) => (
@@ -303,7 +300,7 @@ export function AppearanceEditor({
                 max={32}
                 value={values.radiusPx}
                 onChange={(e) => set("radiusPx", Number(e.target.value))}
-                className={control}
+                className={controlClass}
               />
             </Labeled>
             <Labeled
@@ -316,7 +313,7 @@ export function AppearanceEditor({
                 name="textScale"
                 value={values.textScale}
                 onChange={(e) => set("textScale", Number(e.target.value))}
-                className={control}
+                className={controlClass}
               >
                 {textScaleOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -340,7 +337,7 @@ export function AppearanceEditor({
               value={values.signInHeadline}
               maxLength={120}
               onChange={(e) => set("signInHeadline", e.target.value)}
-              className={control}
+              className={controlClass}
             />
           </Labeled>
           <Labeled
@@ -355,7 +352,7 @@ export function AppearanceEditor({
               value={values.signInMessage}
               maxLength={1000}
               onChange={(e) => set("signInMessage", e.target.value)}
-              className={control}
+              className={controlClass}
             />
           </Labeled>
           <fieldset className="flex flex-col gap-1">

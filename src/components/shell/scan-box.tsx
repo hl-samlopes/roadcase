@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { buttonClass } from "@/components/ui";
+import { buttonClass, controlClass } from "@/components/ui";
 
 /** Whether a key press is going into a field, so the "/" shortcut leaves it alone. */
 function typingInField(target: EventTarget | null) {
@@ -51,7 +51,7 @@ export function ScanBox({ className = "" }: { className?: string }) {
         placeholder="Scan or enter a code"
         title="Press / to jump here"
         aria-keyshortcuts="/"
-        className="rounded-theme border-border bg-surface text-text focus-visible:outline-accent min-w-0 flex-1 border px-2 py-1.5 focus-visible:outline-2"
+        className={`${controlClass} min-w-0 flex-1`}
       />
       <button type="submit" className={buttonClass("secondary")}>
         Open item

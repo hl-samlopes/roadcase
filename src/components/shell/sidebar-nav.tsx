@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { touchTarget } from "@/components/ui";
 
 export interface NavItem {
   href: string;
@@ -21,7 +22,7 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
               <Link
                 href={item.href}
                 aria-current={current ? "page" : undefined}
-                className={`rounded-theme block border-l-4 px-3 py-1.5 ${
+                className={`${touchTarget} rounded-theme flex items-center border-l-4 px-3 py-1.5 ${
                   current
                     ? "border-accent bg-bg text-text font-semibold"
                     : "text-muted hover:bg-bg hover:text-text border-transparent"
