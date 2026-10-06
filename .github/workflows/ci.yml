@@ -76,6 +76,17 @@ jobs:
           docker logs minio
           exit 1
 
+      # Catches email from the e2e worker; tests read it back through its API.
+      - name: Start Mailpit
+        run: |
+          docker run -d --name mailpit -p 8025:8025 axllent/mailpit:v1.31.4
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8025/livez && exit 0
+            sleep 1
+          done
+          docker logs mailpit
+          exit 1
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 

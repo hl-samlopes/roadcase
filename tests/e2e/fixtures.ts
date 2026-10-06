@@ -9,6 +9,12 @@ export const E2E_DATABASE_URL =
 /** Test uploads go to their own bucket, emptied by global setup. */
 export const E2E_BUCKET = "roadcase-e2e";
 
+/** Mailpit (from docker compose) catches the e2e worker's email; tests read it back. */
+export const MAILPIT_URL = process.env.MAILPIT_URL ?? "http://localhost:8025";
+
+/** The seeded admin's address, where test emails go. */
+export const E2E_ADMIN_EMAIL = "e2e-admin@example.com";
+
 export const ids = {
   meadowRanch: "0190a000-0000-7000-8000-000000000001",
   hneMain: "0190a000-0000-7000-8000-000000000002",

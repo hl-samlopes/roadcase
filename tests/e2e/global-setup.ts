@@ -1,4 +1,5 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+import { mkdirSync, openSync, writeSync } from "node:fs";
 import {
   CreateBucketCommand,
   DeleteObjectsCommand,
@@ -17,8 +18,10 @@ import {
   appearanceOrganization,
   brandedOrganization,
   BULK_ITEM_COUNT,
+  E2E_ADMIN_EMAIL,
   E2E_BUCKET,
   E2E_DATABASE_URL,
+  MAILPIT_URL,
   existingTicket,
   ids,
   items,
@@ -27,7 +30,9 @@ import {
 
 /**
  * Rebuilds the e2e database: create it if needed, apply migrations, wipe all
- * rows, then load the standard seed plus a few locations, items and users.
+ * rows and queued jobs, then load the standard seed plus a few locations,
+ * items and users. Then starts a background worker on that database, and
+ * returns the teardown that stops it.
  */
 export default async function globalSetup() {
   const url = new URL(E2E_DATABASE_URL);
@@ -59,13 +64,15 @@ export default async function globalSetup() {
     await prisma.$executeRawUnsafe(
       `truncate table ${tables.map((t) => `"${t.tablename}"`).join(", ")} cascade`,
     );
+    // pg-boss recreates its schema when the worker starts.
+    await prisma.$executeRawUnsafe("drop schema if exists pgboss cascade");
 
     await seed(
       prisma,
       {
         SEED_ADMIN_USERNAME: accounts.admin.username,
         SEED_ADMIN_PASSWORD: accounts.admin.password,
-        SEED_ADMIN_EMAIL: "e2e-admin@example.com",
+        SEED_ADMIN_EMAIL: E2E_ADMIN_EMAIL,
         SEED_ADMIN_DISPLAY_NAME: "E2E Admin",
       },
       () => {},
@@ -74,6 +81,65 @@ export default async function globalSetup() {
   } finally {
     await prisma.$disconnect();
   }
+
+  return startWorker();
+}
+
+/**
+ * Runs `npm run worker`'s command against the e2e database, with the test-only
+ * queue enabled. Its output goes to test-results/e2e-worker.log.
+ */
+async function startWorker() {
+  mkdirSync("test-results", { recursive: true });
+  const log = openSync("test-results/e2e-worker.log", "w");
+  const worker = spawn(
+    process.execPath,
+    [
+      "--conditions=react-server",
+      "--import",
+      "./src/worker/resolve-hooks.ts",
+      "src/worker/main.ts",
+    ],
+    {
+      env: {
+        ...process.env,
+        DATABASE_URL: E2E_DATABASE_URL,
+        JOBS_TEST_QUEUE: "1",
+        EMAIL_PROVIDER: "mailpit",
+        MAILPIT_URL,
+        S3_BUCKET: E2E_BUCKET,
+        S3_PUBLIC_BASE_URL: `http://localhost:9000/${E2E_BUCKET}`,
+      },
+      stdio: ["ignore", "pipe", log],
+    },
+  );
+  const output = worker.stdout;
+  if (!output) throw new Error("The e2e worker has no output stream");
+  output.on("data", (chunk: Buffer) => writeSync(log, chunk));
+
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error("The e2e worker didn't start; see test-results/e2e-worker.log")),
+      30_000,
+    );
+    worker.once("exit", (code) => {
+      clearTimeout(timer);
+      reject(new Error(`The e2e worker exited (${code}); see test-results/e2e-worker.log`));
+    });
+    output.on("data", (chunk: Buffer) => {
+      if (chunk.toString().includes("[worker] Ready")) {
+        clearTimeout(timer);
+        resolve();
+      }
+    });
+  });
+  return async () => {
+    if (worker.exitCode !== null) return;
+    const exited = new Promise((resolve) => worker.once("exit", resolve));
+    worker.kill("SIGTERM");
+    await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 25_000))]);
+    if (worker.exitCode === null) worker.kill("SIGKILL");
+  };
 }
 
 /** Creates or empties the e2e bucket; its branding/ prefix is public like in dev. */
