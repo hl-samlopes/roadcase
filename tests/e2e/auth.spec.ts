@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { accounts } from "./fixtures.ts";
-import { signIn, signOut } from "./helpers.ts";
+import { cssVariable, signIn, signOut } from "./helpers.ts";
 
 test("signed-out visitors are sent to sign-in", async ({ page }) => {
   await page.goto("/items");
@@ -29,4 +29,13 @@ test("usernames are case-insensitive and sign-out ends the session", async ({ pa
   await signOut(page);
   await page.goto("/items");
   await expect(page).toHaveURL(/\/sign-in$/);
+});
+
+test("sign-in follows the device's light or dark mode", async ({ page }) => {
+  await page.goto("/sign-in");
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.+/);
+  await page.emulateMedia({ colorScheme: "dark" });
+  expect(await cssVariable(page, "--bg")).toBe("#0F1319");
+  await page.emulateMedia({ colorScheme: "light" });
+  expect(await cssVariable(page, "--bg")).toBe("#F6F7F9");
 });

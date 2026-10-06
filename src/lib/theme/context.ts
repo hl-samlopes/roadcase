@@ -10,7 +10,7 @@ import { resolveTheme } from "./resolve";
 /**
  * Branding and theme for the current request: the signed-in user's
  * organization and preferences, or for visitors the organization resolved
- * from the address with the default light mode.
+ * from the address, following the device's light or dark mode.
  */
 export const getThemeContext = cache(async () => {
   const user = await getCurrentUser();
@@ -24,5 +24,6 @@ export const getThemeContext = cache(async () => {
 
   const organization = await resolveOrganization((await headers()).get("host"));
   const branding = organization ? await getBranding(organization.id) : null;
-  return { user: null, branding, preference: null, theme: resolveTheme(branding, null) };
+  const theme = { ...resolveTheme(branding, null), mode: "system" as const };
+  return { user: null, branding, preference: null, theme };
 });
