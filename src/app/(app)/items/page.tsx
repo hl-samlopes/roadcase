@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { buttonClass, PageHeader, SelectField, TextField } from "@/components/ui";
+import { buttonClass, Card, PageHeader, SelectField, TextField } from "@/components/ui";
+import { canOpenPlacesSettings } from "@/lib/admin/places";
 import { requireUser } from "@/lib/authz";
 import { getCampusContext } from "@/lib/data/campuses";
 import {
@@ -43,10 +44,11 @@ export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
   const user = await requireUser();
   const params = parseListParams(await searchParams);
   const { active } = await getCampusContext(user);
-  const [{ items, total, page, pageCount }, filters, homes] = await Promise.all([
+  const [{ items, total, page, pageCount }, filters, homes, canSetUpPlaces] = await Promise.all([
     listItems(user, params, active?.id ?? null),
     listFilterOptions(user, active?.id ?? null),
     allowedHomes(user, "item:create"),
+    canOpenPlacesSettings(user),
   ]);
   const sort = params.sort ?? "code";
   const dir = params.dir ?? (sort === "updated" ? "desc" : "asc");
@@ -165,10 +167,27 @@ export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
       </div>
 
       <p className="text-muted mb-2" role="status">
-        {total === 0
-          ? "No items match."
-          : `${total} item${total === 1 ? "" : "s"} · Showing ${active ? `${active.name} (${active.code})` : "all campuses"}`}
+        {total > 0
+          ? `${total} item${total === 1 ? "" : "s"} · Showing ${active ? `${active.name} (${active.code})` : "all campuses"}`
+          : filtered
+            ? "No items match these filters."
+            : homes.length > 0
+              ? "No items yet. Use New item to add the first one."
+              : "No items yet."}
       </p>
+
+      {/* New item needs a location linked to a department; say so instead of hiding it silently. */}
+      {total === 0 && !filtered && homes.length === 0 && canSetUpPlaces ? (
+        <Card title="Set up locations before adding items">
+          <p className="mb-3">
+            Each item needs a home location and an owning department. Add at least one location and
+            one department, then link the department to that location.
+          </p>
+          <Link href="/settings/locations" className={buttonClass("primary")}>
+            Set up locations and departments
+          </Link>
+        </Card>
+      ) : null}
 
       {items.length > 0 ? (
         <>

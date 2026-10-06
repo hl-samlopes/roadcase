@@ -48,6 +48,21 @@ export default async function LocationsPage() {
       : [],
   ]);
 
+  // Items need a location linked to a department, so walk a new organization through that order.
+  const activeLocationIds = new Set(allLocations.map((l) => l.id));
+  const activeDepartments = departments.filter((d) => !d.archivedAt);
+  const setupSteps = [
+    { label: "Add a location on a campus", done: activeLocationIds.size > 0 },
+    { label: "Add a department", done: activeDepartments.length > 0 },
+    {
+      label: "Link the department to the locations where it keeps equipment",
+      done: activeDepartments.some((d) =>
+        d.locations.some((l) => activeLocationIds.has(l.locationId)),
+      ),
+    },
+  ];
+  const showSetup = departmentsAllowed && !setupSteps.every((step) => step.done);
+
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
@@ -60,6 +75,28 @@ export default async function LocationsPage() {
         Each item has a home location (a camp or venue on a campus) and an owning department. A
         department can keep equipment only at the locations linked to it below.
       </p>
+
+      {showSetup ? (
+        <Card title="Before items can be added">
+          <ol className="flex flex-col gap-1">
+            {setupSteps.map((step, index) => (
+              <li key={step.label}>
+                {index + 1}. {step.label}{" "}
+                <span className={step.done ? "font-semibold" : "text-muted"}>
+                  ({step.done ? "done" : "to do"})
+                </span>
+              </li>
+            ))}
+          </ol>
+          <p className="text-muted mt-2">
+            Departments and their links are under{" "}
+            <a href="#departments" className="text-accent hover:underline">
+              Departments
+            </a>
+            , after the campuses.
+          </p>
+        </Card>
+      ) : null}
 
       {campuses.map((campus) => {
         const campusLocations = locations.filter((l) => l.campusId === campus.id);
@@ -150,7 +187,7 @@ export default async function LocationsPage() {
       })}
 
       {departmentsAllowed ? (
-        <section className="flex flex-col gap-3">
+        <section id="departments" className="flex scroll-mt-4 flex-col gap-3">
           <h2 className="text-xl">Departments</h2>
           {departments.length === 0 ? <p className="text-muted">No departments yet.</p> : null}
           <ul className="flex flex-col gap-3">

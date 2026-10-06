@@ -28,6 +28,15 @@ function queueHref(
   return query ? `/tickets?${query}` : "/tickets";
 }
 
+/** What an empty list says, so "no tickets at all" isn't worded like a failed search. */
+function emptyMessage(params: TicketListParams) {
+  if (params.q || params.department) return "No tickets match these filters.";
+  const status = params.status ?? "open";
+  if (status === "open") return "No open tickets.";
+  if (status === "all") return "No tickets yet.";
+  return "No tickets match these filters.";
+}
+
 export default async function TicketsPage({ searchParams }: PageProps<"/tickets">) {
   const user = await requireUser();
   const params = parseTicketListParams(await searchParams);
@@ -93,7 +102,7 @@ export default async function TicketsPage({ searchParams }: PageProps<"/tickets"
 
       <p className="text-muted mb-2" role="status">
         {total === 0
-          ? "No tickets match."
+          ? emptyMessage(params)
           : `${total} ticket${total === 1 ? "" : "s"} · Showing ${active ? `${active.name} (${active.code})` : "all campuses"}`}
       </p>
 

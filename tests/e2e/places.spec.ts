@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { accounts } from "./fixtures.ts";
+import { accounts, appearanceOrganization as emptyOrg } from "./fixtures.ts";
 import { signIn } from "./helpers.ts";
 
 test("an organization admin adds a location and links a new department to it", async ({ page }) => {
@@ -42,4 +42,24 @@ test("a department can't drop a location that still holds its items", async ({ p
 test("editors can't open location settings", async ({ page }) => {
   await signIn(page, accounts.meadowRanchEditor);
   expect((await page.goto("/settings/locations"))?.status()).toBe(404);
+});
+
+test("a new organization is pointed to location setup before it can add items", async ({
+  browser,
+}) => {
+  const admin = await (await browser.newContext()).newPage();
+  await signIn(admin, emptyOrg.admin, emptyOrg.slug);
+  await expect(admin.getByRole("status")).toHaveText("No items yet.");
+  await expect(admin.getByRole("link", { name: "New item" })).toHaveCount(0);
+  await admin.getByRole("link", { name: "Set up locations and departments" }).click();
+  await expect(admin.getByRole("heading", { name: "Before items can be added" })).toBeVisible();
+  await expect(admin.getByText("1. Add a location on a campus (to do)")).toBeVisible();
+
+  // People who can't set up locations just see the empty list.
+  const viewer = await (await browser.newContext()).newPage();
+  await signIn(viewer, emptyOrg.viewer, emptyOrg.slug);
+  await expect(viewer.getByRole("status")).toHaveText("No items yet.");
+  await expect(viewer.getByRole("link", { name: "Set up locations and departments" })).toHaveCount(
+    0,
+  );
 });
