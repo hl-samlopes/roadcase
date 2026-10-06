@@ -75,8 +75,10 @@ export async function saveEmailPreferencesAction(
     ]),
   ) as Record<(typeof emailPreferenceFields)[TicketNotice], boolean> & {
     emailRequestSent?: boolean;
+    emailBandSent?: boolean;
   };
   data.emailRequestSent = formData.get("emailRequestSent") === "on";
+  data.emailBandSent = formData.get("emailBandSent") === "on";
   await db.userPreference.upsert({
     where: { userId: user.id },
     create: { userId: user.id, ...data },

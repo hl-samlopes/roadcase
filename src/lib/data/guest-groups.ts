@@ -108,6 +108,8 @@ const guestGroupDetailSelect = {
       },
     },
   },
+  bandSetup: { select: { status: true, _count: { select: { members: true } } } },
+  inputList: { select: { sharedAt: true } },
   checkouts: {
     orderBy: { number: "asc" },
     select: { id: true, number: true, status: true, dateOut: true, dateDue: true },

@@ -94,6 +94,18 @@ None expected. The portal reuses `@react-pdf/renderer` (input list PDF), pg-boss
 
 ## Step 3: Band builder and input list
 
+**Done (Oct 6, 2026).** Phase 3 is complete.
+- **Where it lives:**
+  - Guests: `/portal/<token>/band`.
+  - Staff: `/guests/<id>/band`.
+  - Campus admins: Settings > Band positions (`bandPositions:manage`).
+- **Default positions:** the seed adds them to a campus that has none.
+- **Staff's list:**
+  - It's a separate saved copy (`InputList`), so a group's later changes never overwrite it; staff get a warning and can rebuild it.
+  - Sharing shows it in the portal, and the worker makes a PDF for each saved version.
+  - The PDF's subject lists the channels in order, so tests can check it matches the screen.
+- **Emails:** a sent band emails everyone who runs check-outs at the campus, with its own opt-out in Preferences.
+
 - Per-campus band positions with their default inputs, edited by campus admins (the defaults in the table above, seeded per campus only when the campus has none).
 - In the portal, the group sets how many of each position it has, plus names or notes per player (for example "lead vocal, wireless if possible"), the total channels it expects, and other needs such as in-ear monitors, playback or click track.
 - The input list is generated from the band setup: numbered channels with source, mic or DI, stand and notes. Staff can adjust it (reorder, rename, add, remove) before sharing. Staff edits are kept separate, so a guest's changes don't wipe them out without a warning.

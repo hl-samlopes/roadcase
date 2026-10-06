@@ -14,7 +14,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { hash } from "argon2";
 import pg from "pg";
 import { PrismaClient } from "../../src/generated/prisma/client.ts";
-import { seed } from "../../prisma/seed/run.ts";
+import { addDefaultBandPositions, seed } from "../../prisma/seed/run.ts";
 import { appTimeZone, dateInZone } from "../../src/lib/checkouts/overdue.ts";
 import { placeholderTemplate } from "../../src/lib/contracts/placeholder.ts";
 import { hashPortalToken } from "../../src/lib/portal/token.ts";
@@ -874,7 +874,8 @@ async function loadPortalOrganization(prisma: PrismaClient) {
 
   const today = Date.parse(`${dateInZone(new Date(), appTimeZone())}T00:00:00Z`);
   const day = (offset: number) => new Date(today + offset * 86_400_000);
-  for (const group of [o.youth, o.choir, o.retreat, o.band, o.campers]) {
+  await addDefaultBandPositions(prisma, organizationId, o.campus.id);
+  for (const group of [o.youth, o.choir, o.retreat, o.band, o.campers, o.worship]) {
     await prisma.guestGroup.create({
       data: {
         id: group.id,

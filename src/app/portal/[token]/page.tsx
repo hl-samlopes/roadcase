@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { buttonClass } from "@/components/ui";
 import { portalRequest } from "@/lib/data/portal";
+import { db } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { guestRequestStatusLabels } from "@/lib/portal/request-labels";
 import { guestCanEdit } from "@/lib/portal/requests";
@@ -19,7 +20,16 @@ export default async function PortalPage({ params }: PageProps<"/portal/[token]"
   const { token } = await params;
   const { portal, branding } = await loadPortal(token, "portal:view");
   const { group } = portal;
-  const request = await portalRequest(portal.principal);
+  const [request, band] = await Promise.all([
+    portalRequest(portal.principal),
+    db.bandSetup.findFirst({
+      where: {
+        guestGroupId: portal.principal.guestGroupId,
+        organizationId: portal.principal.organizationId,
+      },
+      select: { status: true, _count: { select: { members: true } } },
+    }),
+  ]);
   const lastDay = new Date(`${portal.lastDay}T00:00:00Z`);
   const requested = request?.lines.reduce((sum, line) => sum + line.quantityRequested, 0) ?? 0;
 
@@ -82,11 +92,20 @@ export default async function PortalPage({ params }: PageProps<"/portal/[token]"
         </Link>
       </section>
       <section className="rounded-theme border-border bg-surface border p-4">
-        <h2 className="mb-2 text-base">Coming soon</h2>
-        <p>
-          Telling the audio team about your band will open on this page. Your staff contact will let
-          you know.
+        <h2 className="mb-2 text-base">Band and input list</h2>
+        <p className="mb-3">
+          {band?.status === "SUBMITTED"
+            ? `Sent to the audio team: ${band._count.members} player${band._count.members === 1 ? "" : "s"}.`
+            : band
+              ? "Saved, not sent to the audio team yet."
+              : "Tell the audio team who's playing, and see the input list it makes."}
         </p>
+        <Link
+          href={`/portal/${token}/band`}
+          className={buttonClass(band ? "secondary" : "primary")}
+        >
+          {band ? "See or change your band" : "Describe your band"}
+        </Link>
       </section>
       <p className="text-muted">
         This page is private to your group and works until {formatDate(lastDay)}. Anyone with the

@@ -189,6 +189,11 @@ export default async function PreferencesPage() {
               label="A guest group sends or changes an equipment request where I run check-outs"
               defaultChecked={preference?.emailRequestSent ?? true}
             />
+            <CheckboxField
+              name="emailBandSent"
+              label="A guest group sends or changes its band setup where I run check-outs"
+              defaultChecked={preference?.emailBandSent ?? true}
+            />
           </fieldset>
           <p className="text-muted">
             You only get email about tickets you can see. Slack alerts are set per campus or

@@ -177,6 +177,18 @@ export default async function GuestGroupPage({ params, searchParams }: PageProps
         )}
       </Card>
 
+      <Card title="Band and input list">
+        <p className="mb-3">
+          {group.bandSetup?.status === "SUBMITTED"
+            ? `The group sent its band: ${group.bandSetup._count.members} player${group.bandSetup._count.members === 1 ? "" : "s"}.`
+            : "The group hasn't sent its band yet."}
+          {group.inputList?.sharedAt ? " Its input list is shared with the group." : ""}
+        </p>
+        <Link href={`/guests/${group.id}/band`} className={buttonClass("secondary")}>
+          See the band and input list
+        </Link>
+      </Card>
+
       <Card title="Check-outs">
         {group.checkouts.length > 0 ? (
           <ul className="mb-3 flex flex-col gap-1">

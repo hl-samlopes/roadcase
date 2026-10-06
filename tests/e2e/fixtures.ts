@@ -217,6 +217,14 @@ export const portalOrganization = {
     token: fixtureToken("campers"),
     days: [31, 33],
   },
+  /** Step 3: describes its band; staff adjust, share and the group changes it. */
+  worship: {
+    id: "0190a000-0000-7000-8000-00000000006d",
+    name: "Lakeside worship",
+    email: "lk-worship@example.com",
+    token: fixtureToken("worship"),
+    days: [40, 42],
+  },
   /** Runs check-outs at Lakeside but turned request emails off. */
   quietEditor: { username: "lk-quiet", password: "e2e-lk-quiet-pass-1" },
   /** Runs check-outs at Lakeside North only: never sees Lakeside's requests. */
