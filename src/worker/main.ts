@@ -12,12 +12,14 @@ import { remindOverdueCheckouts } from "@/lib/checkouts/overdue-job";
 import type { QueueName } from "@/lib/jobs/queues";
 import { runJob, type JobHandler } from "@/lib/jobs/run";
 import { fanOutTicketNotice, postSlackJob } from "@/lib/notifications/jobs";
+import { fanOutRequestNotice } from "@/lib/portal/notify";
 
 const handlers: { [Q in QueueName]?: JobHandler<Q> } = {
   "email.send": (data) => sendEmail(data),
   "ticket.notify": (data) => fanOutTicketNotice(data),
   "slack.post": (data) => postSlackJob(data),
   "contract.pdf": (data) => generateContractPdf(data),
+  "request.notify": (data) => fanOutRequestNotice(data),
 };
 
 // e2e tests check retries and the failure log with a job that fails on purpose.

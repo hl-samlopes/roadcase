@@ -11,7 +11,7 @@ import type { FormState } from "@/lib/forms/state";
 import { enqueue } from "@/lib/jobs/boss";
 import { parseQuantity } from "@/lib/portal/catalog";
 import { quantityField } from "@/lib/portal/fields";
-import { guestCanEdit } from "@/lib/portal/requests";
+import { guestCanEdit, guestEditableStatuses } from "@/lib/portal/requests";
 import { encryptSecret, secretsConfigured } from "@/lib/secrets";
 
 const LINK_GONE: FormState = {
@@ -101,24 +101,32 @@ export async function saveRequestAction(
     select: { repEmail: true, repName: true },
   });
   const now = new Date();
-  await db.$transaction(async (tx) => {
-    const request = await tx.equipmentRequest.upsert({
-      where: { guestGroupId: principal.guestGroupId },
-      create: {
-        organizationId: principal.organizationId,
-        campusId: principal.campusId,
-        guestGroupId: principal.guestGroupId,
-        status: send ? "SUBMITTED" : "DRAFT",
-        note: note.data || null,
-        submittedAt: send ? now : null,
-      },
-      update: {
-        status: send ? "SUBMITTED" : "DRAFT",
-        note: note.data || null,
-        ...(send ? { submittedAt: now } : {}),
-      },
-      select: { id: true },
-    });
+  const fields = {
+    status: send ? ("SUBMITTED" as const) : ("DRAFT" as const),
+    note: note.data || null,
+    ...(send ? { submittedAt: now } : {}),
+  };
+  const saved = await db.$transaction(async (tx) => {
+    let request: { id: string };
+    if (existing) {
+      // Only while staff haven't started: a review that began since loading wins.
+      const { count } = await tx.equipmentRequest.updateMany({
+        where: { id: existing.id, status: { in: guestEditableStatuses } },
+        data: fields,
+      });
+      if (count === 0) return false;
+      request = existing;
+    } else {
+      request = await tx.equipmentRequest.create({
+        data: {
+          organizationId: principal.organizationId,
+          campusId: principal.campusId,
+          guestGroupId: principal.guestGroupId,
+          ...fields,
+        },
+        select: { id: true },
+      });
+    }
     await tx.equipmentRequestLine.deleteMany({ where: { requestId: request.id } });
     if (lines.length > 0) {
       await tx.equipmentRequestLine.createMany({
@@ -144,8 +152,20 @@ export async function saveRequestAction(
         },
         { tx },
       );
+      // Staff who can review it hear about each send, once.
+      await enqueue(
+        "request.notify",
+        {
+          organizationId: principal.organizationId,
+          requestId: request.id,
+          submittedAt: now.toISOString(),
+        },
+        { tx, key: `${request.id}:${now.getTime()}` },
+      );
     }
+    return true;
   });
+  if (!saved) return LOCKED;
   refresh();
   const count = lines.reduce((sum, line) => sum + line.quantityRequested, 0);
   const items = `${count} item${count === 1 ? "" : "s"}`;

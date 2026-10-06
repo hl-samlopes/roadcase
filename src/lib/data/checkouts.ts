@@ -306,3 +306,35 @@ export function feeTotalCents(lines: { fee: { toString(): string } | null }[]): 
     0,
   );
 }
+
+/**
+ * Items in these categories at a campus that the actor can see, each with
+ * why it couldn't go on a new check-out there (null when it can). For
+ * turning a guest request into a check-out.
+ */
+export async function itemsForNewCheckout(
+  actor: Actor,
+  place: { organizationId: string; campusId: string },
+  categoryIds: string[],
+) {
+  const scope = scopeWhere(actor, "item:read");
+  if (!scope || categoryIds.length === 0) return [];
+  const items = await db.item.findMany({
+    where: { AND: [scope, { campusId: place.campusId, categoryId: { in: categoryIds } }] },
+    orderBy: { code: "asc" },
+    select: { ...itemSelect, categoryId: true },
+  });
+  // No check-out exists yet, so any check-out holding an item refuses it.
+  const draft = { id: "", ...place };
+  return items.map((item) => {
+    const refusal = refusalFor(actor, draft, item);
+    return {
+      id: item.id,
+      code: item.code,
+      name: item.name,
+      categoryId: item.categoryId,
+      condition: item.condition.label,
+      refusal: refusal ? refusalMessage(refusal) : null,
+    };
+  });
+}

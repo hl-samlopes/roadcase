@@ -13,7 +13,13 @@ import { resolveTheme } from "@/lib/theme/resolve";
 import { renderBrandedEmail, type EmailBrand, type EmailContent } from "./layout";
 import { overdueEmail } from "@/lib/checkouts/overdue-job";
 import { contractEmail } from "@/lib/contracts/email";
-import { portalLinkEmail, portalRequestEmail } from "@/lib/portal/email";
+import {
+  portalDecisionEmail,
+  portalLinkEmail,
+  portalRequestEmail,
+  requestSentEmail,
+} from "@/lib/portal/email";
+import { isRequestApprover } from "@/lib/portal/requests";
 import { emailProviderFromEnv, type EmailAddress, type EmailAttachment } from "./provider";
 import { testEmailContent } from "./templates";
 
@@ -118,6 +124,19 @@ async function compose(
     case "portal-request": {
       const composed = await portalRequestEmail(organizationId, payload.data);
       return "skip" in composed ? composed : { to, content: composed.content };
+    }
+    case "portal-decision": {
+      const composed = await portalDecisionEmail(organizationId, payload.data);
+      return "skip" in composed ? composed : { to, content: composed.content };
+    }
+    case "request-sent": {
+      const composed = await requestSentEmail(organizationId, payload.data);
+      if ("skip" in composed) return composed;
+      // Only to someone who can still review it and still wants these emails.
+      if (!candidate || !isRequestApprover(candidate, composed.request)) {
+        return { skip: "recipient can no longer review this request or opted out" };
+      }
+      return { to, content: composed.content };
     }
   }
 }

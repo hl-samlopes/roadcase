@@ -12,19 +12,32 @@ import { reservingStatuses } from "@/lib/portal/requests";
  * visitor without tying it back to the principal.
  */
 
-/** The catalog for a group's campus and dates. */
-export async function portalCatalog(
-  principal: PortalPrincipal,
-  dates: { arrivalDate: Date; departureDate: Date },
-) {
-  const { organizationId, campusId } = principal;
-  const categories = await db.category.findMany({
-    where: { organizationId, showInPortal: true, archivedAt: null },
-    orderBy: [{ position: "asc" }, { name: "asc" }],
-    select: { id: true, name: true, portalDescription: true },
-  });
-  if (categories.length === 0) return [];
+/** A guest group's place and dates: what availability is worked out for. */
+export interface GroupScope {
+  organizationId: string;
+  campusId: string;
+  guestGroupId: string;
+}
 
+interface Dates {
+  arrivalDate: Date;
+  departureDate: Date;
+}
+
+/**
+ * Kinds in these categories with how many are free for the group's dates.
+ * Free leaves out items held by an overlapping check-out (or still out past
+ * its due date) and what other groups were approved for overlapping dates,
+ * unless their request already became a check-out (which then holds the
+ * items itself).
+ */
+async function kindsFor(
+  scope: GroupScope,
+  dates: Dates,
+  categories: { id: string; name: string; description: string | null }[],
+) {
+  const { organizationId, campusId } = scope;
+  if (categories.length === 0) return [];
   const items = await db.item.findMany({
     where: {
       organizationId,
@@ -35,7 +48,6 @@ export async function portalCatalog(
     select: { id: true, name: true, categoryId: true, primaryPhotoId: true },
   });
 
-  // Held: on an active check-out whose dates overlap the visit, or still out past its due date.
   const today = new Date(`${dateInZone(new Date(), appTimeZone())}T00:00:00Z`);
   const held = await db.checkoutLine.findMany({
     where: {
@@ -53,7 +65,6 @@ export async function portalCatalog(
   });
   const heldIds = new Set(held.map((line) => line.itemId));
 
-  // Reserved: what other groups at this campus were approved for overlapping dates.
   const approved = await db.equipmentRequestLine.findMany({
     where: {
       quantityApproved: { gt: 0 },
@@ -61,7 +72,8 @@ export async function portalCatalog(
         organizationId,
         campusId,
         status: { in: reservingStatuses },
-        guestGroupId: { not: principal.guestGroupId },
+        guestGroupId: { not: scope.guestGroupId },
+        OR: [{ checkoutId: null }, { checkout: { status: "CANCELLED" } }],
         guestGroup: {
           archivedAt: null,
           arrivalDate: { lte: dates.departureDate },
@@ -78,7 +90,7 @@ export async function portalCatalog(
   }
 
   return buildCatalog(
-    categories.map((c) => ({ id: c.id, name: c.name, description: c.portalDescription })),
+    categories,
     items.map((item) => ({
       id: item.id,
       name: item.name,
@@ -90,6 +102,43 @@ export async function portalCatalog(
   );
 }
 
+/** The portal catalog: the organization's portal categories at the group's campus. */
+export async function portalCatalog(principal: PortalPrincipal, dates: Dates) {
+  const categories = await db.category.findMany({
+    where: { organizationId: principal.organizationId, showInPortal: true, archivedAt: null },
+    orderBy: [{ position: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, portalDescription: true },
+  });
+  return kindsFor(
+    principal,
+    dates,
+    categories.map((c) => ({ id: c.id, name: c.name, description: c.portalDescription })),
+  );
+}
+
+/**
+ * How many of each requested kind are free for the group's dates, for staff
+ * reviewing it: any category the lines use, shown to guests or not. Keyed by
+ * `kindId`; a kind with nothing left is 0.
+ */
+export async function requestLineAvailability(
+  scope: GroupScope,
+  dates: Dates,
+  lines: { categoryId: string; kindKey: string }[],
+) {
+  const categoryIds = [...new Set(lines.map((line) => line.categoryId))];
+  const sections = await kindsFor(
+    scope,
+    dates,
+    categoryIds.map((id) => ({ id, name: "", description: null })),
+  );
+  const free = new Map<string, number>();
+  for (const { kinds } of sections) {
+    for (const kind of kinds) free.set(kindId(kind.categoryId, kind.key), kind.available);
+  }
+  return free;
+}
+
 /** The group's own equipment request, or null if it hasn't started one. */
 export function portalRequest(principal: PortalPrincipal) {
   return db.equipmentRequest.findFirst({
@@ -99,6 +148,7 @@ export function portalRequest(principal: PortalPrincipal) {
       status: true,
       note: true,
       submittedAt: true,
+      staffMessage: true,
       lines: {
         orderBy: { name: "asc" },
         select: {

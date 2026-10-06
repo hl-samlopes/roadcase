@@ -274,6 +274,7 @@ model User {
   guestGroupsContact            GuestGroup[]              @relation("GuestGroupStaffContact")
   guestGroupsCreated            GuestGroup[]              @relation("GuestGroupCreatedBy")
   portalLinksCreated            PortalLink[]
+  equipmentRequestsDecided      EquipmentRequest[]        @relation("EquipmentRequestDecidedBy")
 
   @@unique([organizationId, username])
   @@unique([organizationId, email])
@@ -667,6 +668,8 @@ model UserPreference {
   emailTicketAssigned  Boolean  @default(true)
   emailTicketCompleted Boolean  @default(true)
   emailTicketComment   Boolean  @default(true)
+  /// A guest group sends (or changes) an equipment request where I run check-outs.
+  emailRequestSent     Boolean  @default(true)
   updatedAt            DateTime @updatedAt @db.Timestamptz(3)
 
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -792,14 +795,15 @@ model Checkout {
   createdAt      DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime       @updatedAt @db.Timestamptz(3)
 
-  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  campus       Campus          @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  staffRep     User?           @relation("CheckoutStaffRep", fields: [staffRepId], references: [id], onDelete: SetNull)
-  createdBy    User?           @relation("CheckoutCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  guestGroup   GuestGroup?     @relation(fields: [guestGroupId], references: [id], onDelete: SetNull)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  campus       Campus            @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  staffRep     User?             @relation("CheckoutStaffRep", fields: [staffRepId], references: [id], onDelete: SetNull)
+  createdBy    User?             @relation("CheckoutCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  guestGroup   GuestGroup?       @relation(fields: [guestGroupId], references: [id], onDelete: SetNull)
   lines        CheckoutLine[]
   contracts    Contract[]
   tickets      ServiceTicket[]
+  request      EquipmentRequest?
 
   @@unique([organizationId, number])
   @@index([campusId, status])
@@ -1011,11 +1015,21 @@ model EquipmentRequest {
   note           String?
   /// When the group last sent it (first send or later changes).
   submittedAt    DateTime?              @db.Timestamptz(3)
+  /// Staff's message to the group with their decision.
+  staffMessage   String?
+  /// When staff sent their decision, and who did.
+  decidedAt      DateTime?              @db.Timestamptz(3)
+  decidedById    String?                @db.Uuid
+  /// The draft check-out made from it. From then on the check-out holds the
+  /// items, so the request no longer reserves them (unless it's cancelled).
+  checkoutId     String?                @unique @db.Uuid
   createdAt      DateTime               @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime               @updatedAt @db.Timestamptz(3)
 
   organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   guestGroup   GuestGroup             @relation(fields: [guestGroupId], references: [id], onDelete: Cascade)
+  decidedBy    User?                  @relation("EquipmentRequestDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  checkout     Checkout?              @relation(fields: [checkoutId], references: [id], onDelete: SetNull)
   lines        EquipmentRequestLine[]
 
   @@index([campusId, status])

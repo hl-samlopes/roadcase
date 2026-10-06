@@ -24,6 +24,8 @@ export const emailTemplates = [
   "overdue",
   "portal-link",
   "portal-request",
+  "request-sent",
+  "portal-decision",
 ] as const;
 
 /**
@@ -75,6 +77,17 @@ export const queues = {
         notice: z.enum(ticketNotices),
       }),
     ]),
+  },
+  /** Emails the people who can review a guest group's request that it was sent or changed. */
+  "request.notify": {
+    label: "Equipment request notification",
+    options: retry,
+    payload: z.object({
+      organizationId: z.uuid(),
+      requestId: z.uuid(),
+      /** Which send this is about (ISO time), so each send is notified once. */
+      submittedAt: z.iso.datetime(),
+    }),
   },
   /** Makes the signed contract's PDF, stores it, then queues the emails to both parties. */
   "contract.pdf": {
