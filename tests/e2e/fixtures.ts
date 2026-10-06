@@ -229,6 +229,16 @@ export const portalOrganization = {
   quietEditor: { username: "lk-quiet", password: "e2e-lk-quiet-pass-1" },
   /** Runs check-outs at Lakeside North only: never sees Lakeside's requests. */
   northEditor: { username: "lk-north", password: "e2e-lk-north-pass-1" },
+  /** Also runs check-outs at Lakeside North; not the default contact. */
+  northEditor2: { username: "lk-north2", password: "e2e-lk-north2-pass-1" },
+  /** A group at Lakeside North, for the campus default contact. */
+  northGroup: {
+    id: "0190a000-0000-7000-8000-00000000006e",
+    name: "North retreat",
+    email: "lk-north-retreat@example.com",
+    token: fixtureToken("north"),
+    days: [50, 52],
+  },
   /** The main photo of one SM58 (shown) and of a Lighting item (never shown). */
   sm58PhotoId: "0190a000-0000-7000-8000-000000000069",
   hiddenPhotoId: "0190a000-0000-7000-8000-00000000006a",

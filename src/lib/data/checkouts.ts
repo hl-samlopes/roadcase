@@ -338,3 +338,24 @@ export async function itemsForNewCheckout(
     };
   });
 }
+
+/**
+ * Who a new guest group or check-out at a campus starts with as its staff
+ * contact: the campus's default contact if they still run check-outs
+ * there, otherwise the person making it if they do, otherwise nobody.
+ * `staff` is `staffOptions` for the campus.
+ */
+export async function defaultStaffId(
+  organizationId: string,
+  campusId: string,
+  staff: { id: string }[],
+  actorId: string,
+): Promise<string | null> {
+  const campus = await db.campus.findFirst({
+    where: { id: campusId, organizationId },
+    select: { defaultContactId: true },
+  });
+  const eligible = (id: string | null | undefined) => !!id && staff.some((p) => p.id === id);
+  if (eligible(campus?.defaultContactId)) return campus!.defaultContactId;
+  return eligible(actorId) ? actorId : null;
+}

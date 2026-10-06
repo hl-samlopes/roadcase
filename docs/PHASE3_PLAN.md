@@ -113,6 +113,12 @@ None expected. The portal reuses `@react-pdf/renderer` (input list PDF), pg-boss
 - The audio team gets an email when a band setup is submitted or changed (recipients follow the request-approver default).
 - Done when: a group enters a band of 2 vocals, guitar, bass, drums and keys; the input list numbers 13 channels; staff adjust it; and the PDF matches the screen.
 
+## After Phase 3: campus default contact (Oct 6, 2026)
+
+- Campus admins set each campus's default contact in Settings > Campuses (someone who runs check-outs there).
+- New guest groups and check-outs at the campus start with them as the staff contact. A check-out made from a request uses the group's contact first.
+- Request and band emails go to that contact alone. They go to everyone who runs check-outs at the campus if no contact is set, if the contact turned those emails off, or if the contact no longer runs check-outs there.
+
 ## Out of scope for Phase 3
 
 Google sign-in, Drive import and export, the AI agent and the RFID UI (Phase 4). MaintainX (end of project). Guest accounts, payments, and a stage plot.

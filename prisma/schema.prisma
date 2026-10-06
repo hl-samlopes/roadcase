@@ -144,19 +144,25 @@ model Organization {
 }
 
 model Campus {
-  id             String    @id @default(uuid(7)) @db.Uuid
-  organizationId String    @db.Uuid
+  id               String    @id @default(uuid(7)) @db.Uuid
+  organizationId   String    @db.Uuid
   /// Short code used as the item code prefix, e.g. "HNE" in HNE-000123.
-  code           String
-  name           String
+  code             String
+  name             String
   /// Last item number issued for this campus; incremented atomically.
-  itemSequence   Int       @default(0)
-  archivedAt     DateTime? @db.Timestamptz(3)
-  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+  itemSequence     Int       @default(0)
+  /// Who guest groups and check-outs at this campus go to by default: new
+  /// ones start with them as the staff contact, and they get the emails
+  /// about guest requests and band setups (everyone who runs check-outs here
+  /// does when none is set).
+  defaultContactId String?   @db.Uuid
+  archivedAt       DateTime? @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
 
   organization             Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   locations                Location[]
+  defaultContact           User?                     @relation("CampusDefaultContact", fields: [defaultContactId], references: [id], onDelete: SetNull)
   items                    Item[]
   serviceTickets           ServiceTicket[]
   serviceLogs              ServiceLog[]
@@ -280,6 +286,7 @@ model User {
   portalLinksCreated            PortalLink[]
   equipmentRequestsDecided      EquipmentRequest[]        @relation("EquipmentRequestDecidedBy")
   inputListsEdited              InputList[]               @relation("InputListEditedBy")
+  campusesContact               Campus[]                  @relation("CampusDefaultContact")
 
   @@unique([organizationId, username])
   @@unique([organizationId, email])

@@ -196,8 +196,9 @@ export default async function PreferencesPage() {
             />
           </fieldset>
           <p className="text-muted">
-            You only get email about tickets you can see. Slack alerts are set per campus or
-            department by admins.
+            Request and band emails go to a campus&apos;s default contact when it has one. You only
+            get email about tickets you can see. Slack alerts are set per campus or department by
+            admins.
           </p>
         </ActionForm>
       </Card>

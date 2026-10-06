@@ -45,6 +45,13 @@ const sections = [
     organizationAdminOnly: false,
   },
   {
+    href: "/settings/campuses",
+    title: "Campuses",
+    description:
+      "Each campus's default contact for guest groups and check-outs, who gets guest request and band emails.",
+    organizationAdminOnly: false,
+  },
+  {
     href: "/settings/band-positions",
     title: "Band positions",
     description: "The band positions guests choose from, and the inputs each one needs.",

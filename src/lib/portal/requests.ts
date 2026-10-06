@@ -73,3 +73,23 @@ export function isBandRecipient(
     })
   );
 }
+
+type NoticeCandidate = Actor & { emailRequestSent: boolean; emailBandSent: boolean };
+
+/**
+ * Who hears that a group sent a request or band setup. The campus's default
+ * contact alone, while they run check-outs there and want these emails;
+ * otherwise (none set, or they turned it off) everyone who runs check-outs
+ * at the campus and wants them.
+ */
+export function campusNoticeRecipients<C extends NoticeCandidate>(
+  candidates: C[],
+  place: { organizationId: string; campusId: string; defaultContactId: string | null },
+  kind: "request" | "band",
+): C[] {
+  const wants = (candidate: C) =>
+    kind === "request" ? isRequestApprover(candidate, place) : isBandRecipient(candidate, place);
+  const contact = candidates.find((candidate) => candidate.id === place.defaultContactId);
+  if (contact && wants(contact)) return [contact];
+  return candidates.filter(wants);
+}

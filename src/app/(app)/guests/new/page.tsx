@@ -5,7 +5,7 @@ import { ActionForm } from "@/components/action-form";
 import { Card, PageHeader, SelectField } from "@/components/ui";
 import { requireUser } from "@/lib/authz";
 import { getCampusContext } from "@/lib/data/campuses";
-import { checkoutCampuses, staffOptions } from "@/lib/data/checkouts";
+import { checkoutCampuses, defaultStaffId, staffOptions } from "@/lib/data/checkouts";
 import { createGuestGroupAction } from "../actions";
 import { GuestGroupFields, groupFieldLabels } from "../details-fields";
 
@@ -24,7 +24,7 @@ export default async function NewGuestGroupPage({ searchParams }: PageProps<"/gu
     campuses.find((c) => c.id === active?.id) ??
     campuses[0];
   const staff = await staffOptions(user.organizationId, campus.id);
-  const defaultStaff = staff.some((p) => p.id === user.id) ? user.id : null;
+  const defaultStaff = await defaultStaffId(user.organizationId, campus.id, staff, user.id);
 
   return (
     <div className="flex max-w-xl flex-col gap-4">

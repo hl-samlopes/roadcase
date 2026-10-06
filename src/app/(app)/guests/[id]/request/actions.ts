@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { canManageCheckout, requireUser, type CurrentUser } from "@/lib/authz";
-import { itemsForNewCheckout, staffOptions } from "@/lib/data/checkouts";
+import { defaultStaffId, itemsForNewCheckout, staffOptions } from "@/lib/data/checkouts";
 import { getRequestForReview } from "@/lib/data/requests";
 import { db } from "@/lib/db";
 import { isUniqueViolation } from "@/lib/forms/prisma-errors";
@@ -209,9 +209,10 @@ export async function createCheckoutFromRequestAction(
   if (chosen.length === 0) return { error: "Choose at least one item." };
 
   const staff = await staffOptions(group.organizationId, group.campusId);
+  // The group's contact, else the campus's default contact, else whoever is making it.
   const staffRepId = staff.some((p) => p.id === group.staffContactId)
     ? group.staffContactId
-    : actor.id;
+    : ((await defaultStaffId(group.organizationId, group.campusId, staff, actor.id)) ?? actor.id);
 
   let checkoutId: string;
   try {

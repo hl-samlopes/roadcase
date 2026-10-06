@@ -801,6 +801,18 @@ async function loadPortalOrganization(prisma: PrismaClient) {
   await prisma.user.create({
     data: {
       organizationId,
+      username: o.northEditor2.username,
+      passwordHash: await hash(o.northEditor2.password),
+      displayName: "Second North Editor",
+      email: `${o.northEditor2.username}@example.com`,
+      grants: {
+        create: { organizationId, level: "EDITOR", scopeType: "CAMPUS", campusId: o.north.id },
+      },
+    },
+  });
+  await prisma.user.create({
+    data: {
+      organizationId,
       username: o.northEditor.username,
       passwordHash: await hash(o.northEditor.password),
       displayName: "North Editor",
@@ -898,6 +910,26 @@ async function loadPortalOrganization(prisma: PrismaClient) {
       },
     });
   }
+  await prisma.guestGroup.create({
+    data: {
+      id: o.northGroup.id,
+      organizationId,
+      campusId: o.north.id,
+      name: o.northGroup.name,
+      repName: "North lead",
+      repEmail: o.northGroup.email,
+      repPhone: "(555) 222-3333",
+      arrivalDate: day(o.northGroup.days[0]),
+      departureDate: day(o.northGroup.days[1]),
+      portalLinks: {
+        create: {
+          organizationId,
+          tokenHash: hashPortalToken(o.northGroup.token),
+          createdById: admin.id,
+        },
+      },
+    },
+  });
   // The retreat was approved for one SM58, which the youth's overlapping dates can't use.
   await prisma.equipmentRequest.create({
     data: {
