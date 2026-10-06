@@ -8,6 +8,7 @@ import { sendEmail } from "@/lib/email/send";
 import { createBoss, ensureQueues } from "@/lib/jobs/boss";
 import { safeErrorMessage } from "@/lib/jobs/errors";
 import { pruneOldJobRecords } from "@/lib/jobs/prune";
+import { remindOverdueCheckouts } from "@/lib/checkouts/overdue-job";
 import type { QueueName } from "@/lib/jobs/queues";
 import { runJob, type JobHandler } from "@/lib/jobs/run";
 import { fanOutTicketNotice, postSlackJob } from "@/lib/notifications/jobs";
@@ -56,6 +57,19 @@ async function prune() {
 void prune();
 const pruneTimer = setInterval(() => void prune(), 24 * 60 * 60 * 1000);
 pruneTimer.unref();
+
+// Overdue check-out reminders: at start, then hourly (each is sent once a day at most).
+async function remindOverdue() {
+  try {
+    const queued = await remindOverdueCheckouts();
+    if (queued) console.log(`[worker] Queued ${queued} overdue reminder${queued === 1 ? "" : "s"}`);
+  } catch (error) {
+    console.error(`[worker] Overdue scan failed: ${safeErrorMessage(error)}`);
+  }
+}
+void remindOverdue();
+const overdueTimer = setInterval(() => void remindOverdue(), 60 * 60 * 1000);
+overdueTimer.unref();
 
 let stopping = false;
 async function stop(signal: string) {

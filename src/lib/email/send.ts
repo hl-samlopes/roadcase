@@ -8,8 +8,10 @@ import type { ParsedPayload } from "@/lib/jobs/queues";
 import { ticketEmailContent } from "@/lib/notifications/content";
 import { loadCandidate, loadNoticeEvent, loadNoticeTicket } from "@/lib/notifications/data";
 import { isTicketRecipient, ticketNotices } from "@/lib/notifications/recipients";
+import { can } from "@/lib/authz/policy";
 import { resolveTheme } from "@/lib/theme/resolve";
 import { renderBrandedEmail, type EmailBrand, type EmailContent } from "./layout";
+import { overdueEmail } from "@/lib/checkouts/overdue-job";
 import { contractEmail } from "@/lib/contracts/email";
 import { emailProviderFromEnv, type EmailAddress, type EmailAttachment } from "./provider";
 import { testEmailContent } from "./templates";
@@ -95,6 +97,18 @@ async function compose(
     case "contract": {
       const composed = await contractEmail(organizationId, payload.data.contractId ?? "");
       return "skip" in composed ? composed : { to, ...composed };
+    }
+    case "overdue": {
+      const composed = await overdueEmail(organizationId, payload.data.checkoutId ?? "");
+      if ("skip" in composed) return composed;
+      // The reminder carries the guest's contact details: only to someone who can see the check-out.
+      if (
+        !candidate ||
+        !can(candidate, "checkout:read", { organizationId, campusId: composed.campusId })
+      ) {
+        return { skip: "recipient can no longer see this check-out" };
+      }
+      return { to, content: composed.content };
     }
   }
 }
