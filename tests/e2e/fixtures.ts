@@ -154,3 +154,54 @@ export const appearanceOrganization = {
   campusAdmin: { username: "fh-campus-admin", password: "e2e-fh-campus-admin-pass-1" },
   viewer: { username: "fh-viewer", password: "e2e-fh-viewer-pass-1" },
 };
+
+/** A portal token for fixtures: the right shape (43 base64url characters), easy to read. */
+const fixtureToken = (word: string) => word.padEnd(43, "0");
+
+/**
+ * Lakeside Camps: the guest portal catalog and requests. At the Lakeside
+ * campus, in days from today:
+ * - Youth (days 10 to 12): SM58 ×4 in Good, one SM58 reserved by the
+ *   retreat's approved request, and Beta 58 ×2 with one held by an
+ *   overlapping draft check-out. So the youth see 3 SM58 and 1 Beta 58.
+ * - Choir (days 20 to 21): nothing overlaps, so 4 SM58 and 2 Beta 58.
+ * - Retreat (days 9 to 11): its request is approved, so it can't be changed.
+ * Hidden from guests: Lighting (not a portal category), Cables (only items
+ * in Needs repair), Staging (until the settings test shows it), a fifth SM58
+ * in Needs repair, and anything at the North campus.
+ */
+export const portalOrganization = {
+  slug: "lakeside",
+  name: "Lakeside Camps",
+  campus: { id: "0190a000-0000-7000-8000-000000000061", code: "LKS", name: "Lakeside" },
+  north: { id: "0190a000-0000-7000-8000-000000000062", code: "LKN", name: "Lakeside North" },
+  locationId: "0190a000-0000-7000-8000-000000000063",
+  northLocationId: "0190a000-0000-7000-8000-000000000064",
+  departmentId: "0190a000-0000-7000-8000-000000000065",
+  admin: { username: "lk-admin", password: "e2e-lk-admin-pass-1" },
+  micsDescription: "Wired and wireless microphones, with clips.",
+  youth: {
+    id: "0190a000-0000-7000-8000-000000000066",
+    name: "Lakeside youth",
+    email: "lk-youth@example.com",
+    token: fixtureToken("youth"),
+    days: [10, 12],
+  },
+  choir: {
+    id: "0190a000-0000-7000-8000-000000000067",
+    name: "Lakeside choir",
+    email: "lk-choir@example.com",
+    token: fixtureToken("choir"),
+    days: [20, 21],
+  },
+  retreat: {
+    id: "0190a000-0000-7000-8000-000000000068",
+    name: "Staff retreat",
+    email: "lk-retreat@example.com",
+    token: fixtureToken("retreat"),
+    days: [9, 11],
+  },
+  /** The main photo of one SM58 (shown) and of a Lighting item (never shown). */
+  sm58PhotoId: "0190a000-0000-7000-8000-000000000069",
+  hiddenPhotoId: "0190a000-0000-7000-8000-00000000006a",
+};

@@ -67,3 +67,82 @@ export async function portalLinkEmail(
     },
   };
 }
+
+const requestData = z.object({
+  requestId: z.uuid(),
+  submittedAt: z.iso.datetime(),
+  linkId: z.uuid().optional(),
+  sealedToken: z.string().min(1).optional(),
+});
+
+/** The group's page link for an email, if the sealed token still matches a working link. */
+async function sealedPortalUrl(organizationId: string, linkId?: string, sealedToken?: string) {
+  if (!linkId || !sealedToken) return null;
+  const link = await db.portalLink.findFirst({
+    where: { id: linkId, organizationId },
+    select: {
+      tokenHash: true,
+      revokedAt: true,
+      guestGroup: { select: { archivedAt: true, departureDate: true } },
+    },
+  });
+  if (!link) return null;
+  if (portalLinkStatus(link, link.guestGroup, dateInZone(new Date(), appTimeZone())) !== "active") {
+    return null;
+  }
+  const token = decryptSecret(sealedToken);
+  return hashPortalToken(token) === link.tokenHash ? appUrl(portalPath(token)) : null;
+}
+
+/**
+ * "We got your request": a copy of what the group sent. Skipped if the group
+ * has sent changes since (that send has its own email) or took it back.
+ */
+export async function portalRequestEmail(
+  organizationId: string,
+  raw: Record<string, string>,
+): Promise<{ content: EmailContent } | { skip: string }> {
+  const parsed = requestData.safeParse(raw);
+  if (!parsed.success) return { skip: "not a request email" };
+  const request = await db.equipmentRequest.findFirst({
+    where: { id: parsed.data.requestId, organizationId },
+    select: {
+      status: true,
+      note: true,
+      submittedAt: true,
+      lines: { orderBy: { name: "asc" }, select: { name: true, quantityRequested: true } },
+      guestGroup: {
+        select: {
+          name: true,
+          repName: true,
+          arrivalDate: true,
+          departureDate: true,
+          archivedAt: true,
+          campus: { select: { name: true } },
+        },
+      },
+    },
+  });
+  if (!request || request.guestGroup.archivedAt) return { skip: "request no longer exists" };
+  if (request.submittedAt?.toISOString() !== parsed.data.submittedAt) {
+    return { skip: "a newer version was sent" };
+  }
+  if (request.status !== "SUBMITTED") return { skip: "request isn't waiting for staff" };
+
+  const group = request.guestGroup;
+  const url = await sealedPortalUrl(organizationId, parsed.data.linkId, parsed.data.sealedToken);
+  return {
+    content: {
+      subject: `We got your equipment request: ${group.name}`,
+      heading: "Your equipment request",
+      paragraphs: [
+        `Thanks, ${group.repName}. Here's what ${group.name} asked for from ${group.campus.name} for ${formatDate(group.arrivalDate)} to ${formatDate(group.departureDate)}:`,
+        ...request.lines.map((line) => `${line.quantityRequested} × ${line.name}`),
+        ...(request.note ? [`Your note: ${request.note}`] : []),
+        "Staff will review it and let you know. Until they start, you can change it on your group page.",
+      ],
+      ...(url ? { action: { label: "Open your group page", url } } : {}),
+      footer: "You're getting this because you sent an equipment request for your group.",
+    },
+  };
+}

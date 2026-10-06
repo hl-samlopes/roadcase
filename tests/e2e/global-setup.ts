@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from "node:child_process";
-import { mkdirSync, openSync, writeSync } from "node:fs";
+import { mkdirSync, openSync, readFileSync, writeSync } from "node:fs";
 import { createServer } from "node:http";
 import {
   CreateBucketCommand,
@@ -7,6 +7,7 @@ import {
   HeadBucketCommand,
   ListObjectsV2Command,
   PutBucketPolicyCommand,
+  PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -16,6 +17,7 @@ import { PrismaClient } from "../../src/generated/prisma/client.ts";
 import { seed } from "../../prisma/seed/run.ts";
 import { appTimeZone, dateInZone } from "../../src/lib/checkouts/overdue.ts";
 import { placeholderTemplate } from "../../src/lib/contracts/placeholder.ts";
+import { hashPortalToken } from "../../src/lib/portal/token.ts";
 import {
   accounts,
   appearanceOrganization,
@@ -29,6 +31,7 @@ import {
   harborOrganization,
   MAILPIT_URL,
   notifyOrganization,
+  portalOrganization,
   existingTicket,
   ids,
   items,
@@ -87,6 +90,7 @@ export default async function globalSetup() {
     await loadFixtures(prisma);
     await loadNotifyOrganization(prisma);
     await loadHarborOrganization(prisma);
+    await loadPortalOrganization(prisma);
   } finally {
     await prisma.$disconnect();
   }
@@ -185,11 +189,11 @@ async function startWorker() {
 }
 
 /** Creates or empties the e2e bucket; its branding/ prefix is public like in dev. */
-async function resetBucket() {
+function s3Client() {
   try {
     process.loadEnvFile();
   } catch {}
-  const s3 = new S3Client({
+  return new S3Client({
     endpoint: process.env.S3_ENDPOINT ?? "http://localhost:9000",
     region: process.env.S3_REGION ?? "us-east-1",
     forcePathStyle: true,
@@ -198,6 +202,10 @@ async function resetBucket() {
       secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "roadcase-dev-secret",
     },
   });
+}
+
+async function resetBucket() {
+  const s3 = s3Client();
   const exists = await s3
     .send(new HeadBucketCommand({ Bucket: E2E_BUCKET }))
     .then(() => true)
@@ -710,4 +718,193 @@ async function loadHarborOrganization(prisma: PrismaClient) {
     });
   await out(o.band, new Date("2030-06-01T00:00:00Z"), [mic, amp]);
   await out(o.sailing, yesterday, [pa]);
+}
+
+/** Lakeside Camps: the guest portal catalog (see portalOrganization in fixtures.ts). */
+async function loadPortalOrganization(prisma: PrismaClient) {
+  const o = portalOrganization;
+  const org = await prisma.organization.create({
+    data: {
+      slug: o.slug,
+      name: o.name,
+      checkoutSequence: 1,
+      branding: { create: {} },
+      campuses: {
+        create: [
+          { id: o.campus.id, code: o.campus.code, name: o.campus.name, itemSequence: 20 },
+          { id: o.north.id, code: o.north.code, name: o.north.name, itemSequence: 5 },
+        ],
+      },
+      categories: {
+        create: [
+          {
+            name: "Microphones",
+            position: 0,
+            showInPortal: true,
+            portalDescription: o.micsDescription,
+          },
+          { name: "Cables", position: 1, showInPortal: true },
+          { name: "Lighting", position: 2 },
+          { name: "Staging", position: 3 },
+        ],
+      },
+      itemConditions: {
+        create: [
+          { label: "Good", isDefault: true, availableForCheckout: true, position: 0 },
+          { label: "Needs repair", startsRepairTicket: true, position: 1 },
+        ],
+      },
+    },
+    include: { categories: true, itemConditions: { orderBy: { position: "asc" } } },
+  });
+  const organizationId = org.id;
+  const [good, repair] = org.itemConditions;
+  const category = (name: string) => org.categories.find((c) => c.name === name)!.id;
+  await prisma.location.createMany({
+    data: [
+      { id: o.locationId, organizationId, campusId: o.campus.id, name: "Lodge" },
+      { id: o.northLocationId, organizationId, campusId: o.north.id, name: "North barn" },
+    ],
+  });
+  await prisma.department.create({
+    data: {
+      id: o.departmentId,
+      organizationId,
+      name: "Production",
+      locations: { create: [{ locationId: o.locationId }, { locationId: o.northLocationId }] },
+    },
+  });
+  const admin = await prisma.user.create({
+    data: {
+      organizationId,
+      username: o.admin.username,
+      passwordHash: await hash(o.admin.password),
+      displayName: "Lakeside Admin",
+      email: `${o.admin.username}@example.com`,
+      grants: { create: { organizationId, level: "ADMIN", scopeType: "ORGANIZATION" } },
+    },
+  });
+
+  const sequence = { [o.campus.id]: 0, [o.north.id]: 0 };
+  const item = (
+    name: string,
+    categoryName: string,
+    options: { north?: boolean; repair?: boolean } = {},
+  ) => {
+    const campus = options.north ? o.north : o.campus;
+    sequence[campus.id] += 1;
+    return prisma.item.create({
+      data: {
+        organizationId,
+        campusId: campus.id,
+        locationId: options.north ? o.northLocationId : o.locationId,
+        departmentId: o.departmentId,
+        code: `${campus.code}-${String(sequence[campus.id]).padStart(6, "0")}`,
+        name,
+        categoryId: category(categoryName),
+        conditionId: options.repair ? repair.id : good.id,
+      },
+    });
+  };
+  const sm58s = [];
+  for (let i = 0; i < 4; i++) sm58s.push(await item("SM58", "Microphones"));
+  await item("SM58", "Microphones", { repair: true });
+  await item("SM58", "Microphones", { north: true });
+  const betas = [await item("Beta 58", "Microphones"), await item("Beta 58", "Microphones")];
+  await item("XLR cable", "Cables", { repair: true });
+  const parCan = await item("Par can", "Lighting");
+  await item("Riser", "Staging");
+
+  // Main photos: one SM58's (shown in the portal) and the Par can's (never shown).
+  const png = readFileSync("tests/e2e/files/speaker.png");
+  const s3 = s3Client();
+  for (const [id, itemId] of [
+    [o.sm58PhotoId, sm58s[0].id],
+    [o.hiddenPhotoId, parCan.id],
+  ]) {
+    const storageKey = `items/${itemId}/${id}.png`;
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: E2E_BUCKET,
+        Key: storageKey,
+        Body: png,
+        ContentType: "image/png",
+      }),
+    );
+    await prisma.attachment.create({
+      data: {
+        id,
+        organizationId,
+        kind: "PHOTO",
+        storageKey,
+        fileName: "photo.png",
+        contentType: "image/png",
+        sizeBytes: png.length,
+        itemId,
+      },
+    });
+    await prisma.item.update({ where: { id: itemId }, data: { primaryPhotoId: id } });
+  }
+
+  const today = Date.parse(`${dateInZone(new Date(), appTimeZone())}T00:00:00Z`);
+  const day = (offset: number) => new Date(today + offset * 86_400_000);
+  for (const group of [o.youth, o.choir, o.retreat]) {
+    await prisma.guestGroup.create({
+      data: {
+        id: group.id,
+        organizationId,
+        campusId: o.campus.id,
+        name: group.name,
+        repName: `${group.name} lead`,
+        repEmail: group.email,
+        repPhone: "(555) 222-3333",
+        arrivalDate: day(group.days[0]),
+        departureDate: day(group.days[1]),
+        staffContactId: admin.id,
+        portalLinks: {
+          create: {
+            organizationId,
+            tokenHash: hashPortalToken(group.token),
+            createdById: admin.id,
+          },
+        },
+      },
+    });
+  }
+  // The retreat was approved for one SM58, which the youth's overlapping dates can't use.
+  await prisma.equipmentRequest.create({
+    data: {
+      organizationId,
+      campusId: o.campus.id,
+      guestGroupId: o.retreat.id,
+      status: "APPROVED",
+      submittedAt: new Date(),
+      lines: {
+        create: {
+          categoryId: category("Microphones"),
+          kindKey: "sm58",
+          name: "SM58",
+          quantityRequested: 1,
+          quantityApproved: 1,
+        },
+      },
+    },
+  });
+  // A draft check-out over the youth's dates holds one Beta 58.
+  await prisma.checkout.create({
+    data: {
+      organizationId,
+      campusId: o.campus.id,
+      number: 1,
+      groupName: "Lodge rental",
+      guestRepName: "Pat Lodge",
+      guestRepEmail: "pat@example.com",
+      guestRepPhone: "(555) 999-0000",
+      staffRepId: admin.id,
+      createdById: admin.id,
+      dateOut: day(10),
+      dateDue: day(12),
+      lines: { create: { organizationId, itemId: betas[0].id, addedById: admin.id } },
+    },
+  });
 }

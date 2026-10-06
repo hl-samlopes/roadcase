@@ -97,6 +97,17 @@ const guestGroupDetailSelect = {
       createdBy: { select: { displayName: true } },
     },
   },
+  request: {
+    select: {
+      status: true,
+      note: true,
+      submittedAt: true,
+      lines: {
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, quantityRequested: true },
+      },
+    },
+  },
   checkouts: {
     orderBy: { number: "asc" },
     select: { id: true, number: true, status: true, dateOut: true, dateDue: true },

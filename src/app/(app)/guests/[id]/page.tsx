@@ -9,6 +9,7 @@ import { appTimeZone } from "@/lib/checkouts/overdue";
 import { staffOptions } from "@/lib/data/checkouts";
 import { getGuestGroup } from "@/lib/data/guest-groups";
 import { formatDate } from "@/lib/format";
+import { requestStatusLabels } from "@/lib/portal/requests";
 import {
   archiveGuestGroupAction,
   copyPortalLinkAction,
@@ -136,6 +137,37 @@ export default async function GuestGroupPage({ params, searchParams }: PageProps
             </>
           ) : null}
         </div>
+      </Card>
+
+      <Card title="Equipment request">
+        {/* A draft is the group's own until it's sent (the portal tells them so). */}
+        {group.request && group.request.status !== "DRAFT" ? (
+          <>
+            <p className="mb-2">
+              <span className="font-semibold">{requestStatusLabels[group.request.status]}</span>
+              {group.request.submittedAt ? `, sent ${formatTime(group.request.submittedAt)}` : ""}.
+            </p>
+            {group.request.lines.length > 0 ? (
+              <ul className="mb-2 list-disc pl-5">
+                {group.request.lines.map((line) => (
+                  <li key={line.id}>
+                    {line.quantityRequested} × {line.name}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {group.request.note ? (
+              <p className="whitespace-pre-line">
+                <span className="text-muted">Group&apos;s note:</span> {group.request.note}
+              </p>
+            ) : null}
+            <p className="text-muted mt-2">Reviewing requests opens in the next update.</p>
+          </>
+        ) : group.request ? (
+          <p>The group has started a request but hasn&apos;t sent it yet.</p>
+        ) : (
+          <p>The group hasn&apos;t started an equipment request.</p>
+        )}
       </Card>
 
       <Card title="Check-outs">

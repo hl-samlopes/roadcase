@@ -53,6 +53,13 @@ None expected. The portal reuses `@react-pdf/renderer` (input list PDF), pg-boss
 
 ## Step 1: Catalog and equipment requests
 
+**Done (Oct 6, 2026).**
+- **Catalog and photos:** the catalog is at `/portal/<token>/equipment`. Photos come only from a permission-checked portal route, and only an item's main photo.
+- **Saving a request:** guests can save for later or send. A sent request can be changed (each change is emailed again) or withdrawn until staff start reviewing.
+- **Write limit:** 30 saves in 15 minutes pauses a link's changes.
+- **Staff view:** the group page shows the sent request read-only; drafts stay private to the group.
+- **For Step 2:** approved quantities count against other groups' availability. Once a request becomes a draft check-out, stop counting it, because the check-out then holds the items.
+
 - A "Show in guest portal" setting on categories in Settings > Categories, and an optional guest-facing description per category.
 - A portal catalog by category, grouping identical items with photos and how many are available for the group's dates. Availability counts items with a check-out-available condition that aren't held by an overlapping active check-out or approved request.
 - The group builds one request (quantity per kind, plus a note) and sends it. It can edit the request until staff start reviewing.
