@@ -314,8 +314,12 @@ export default async function LocationsPage({ searchParams }: PageProps<"/settin
           />
 
           <div className="border-border overflow-x-auto border-t">
-            <div role="table" aria-label="Locations" className="min-w-[640px]">
-              <div role="row" className="grid" style={{ gridTemplateColumns: locColumns }}>
+            <div role="table" aria-label="Locations" className="md:min-w-[640px]">
+              <div
+                role="row"
+                className="hidden md:grid"
+                style={{ gridTemplateColumns: locColumns }}
+              >
                 <div role="columnheader" className={th}>
                   Location
                 </div>
@@ -344,7 +348,10 @@ export default async function LocationsPage({ searchParams }: PageProps<"/settin
                   columns={locColumns}
                   cells={
                     <>
-                      <div role="cell" className={cell}>
+                      <div
+                        role="cell"
+                        className={`${cell} max-md:order-first max-md:min-w-0 max-md:flex-1`}
+                      >
                         <span className="font-semibold">{location.name}</span>
                         {location.code ? (
                           <span className="border-border text-muted rounded border px-1 font-mono text-xs">
@@ -369,6 +376,7 @@ export default async function LocationsPage({ searchParams }: PageProps<"/settin
                         )}
                       </div>
                       <div role="cell" className={cell}>
+                        <span className="text-muted md:hidden">Items:</span>
                         {location._count.items}
                       </div>
                       <div role="cell" className={cell}>
@@ -490,8 +498,12 @@ export default async function LocationsPage({ searchParams }: PageProps<"/settin
           />
 
           <div className="border-border overflow-x-auto border-t">
-            <div role="table" aria-label="Departments" className="min-w-[640px]">
-              <div role="row" className="grid" style={{ gridTemplateColumns: DEPARTMENT_COLUMNS }}>
+            <div role="table" aria-label="Departments" className="md:min-w-[640px]">
+              <div
+                role="row"
+                className="hidden md:grid"
+                style={{ gridTemplateColumns: DEPARTMENT_COLUMNS }}
+              >
                 <div role="columnheader" className={th}>
                   Department
                 </div>
@@ -520,7 +532,10 @@ export default async function LocationsPage({ searchParams }: PageProps<"/settin
                     columns={DEPARTMENT_COLUMNS}
                     cells={
                       <>
-                        <div role="cell" className={`${cell} font-semibold`}>
+                        <div
+                          role="cell"
+                          className={`${cell} font-semibold max-md:order-first max-md:min-w-0 max-md:flex-1`}
+                        >
                           {department.name}
                         </div>
                         <div role="cell" className={cell}>
@@ -535,6 +550,7 @@ export default async function LocationsPage({ searchParams }: PageProps<"/settin
                           )}
                         </div>
                         <div role="cell" className={cell}>
+                          <span className="text-muted md:hidden">Items:</span>
                           {department._count.items}
                         </div>
                         <div role="cell" className={cell}>

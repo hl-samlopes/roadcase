@@ -1,9 +1,13 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import { buttonClass } from "@/components/ui";
 
-/** A table row whose Edit button opens its editor in place, below the row. */
+/**
+ * A table row whose Edit button opens its editor in place, below the row. From
+ * the md breakpoint up it lines up with the header's grid columns; on phones
+ * its cells wrap under the name instead of scrolling sideways.
+ */
 export function EditableRow({
   name,
   columns,
@@ -21,9 +25,13 @@ export function EditableRow({
   const panelId = useId();
   return (
     <div className="border-border border-b last:border-0">
-      <div role="row" className="grid items-center" style={{ gridTemplateColumns: columns }}>
+      <div
+        role="row"
+        className="flex flex-wrap items-center md:grid md:[grid-template-columns:var(--cols)]"
+        style={{ "--cols": columns } as CSSProperties}
+      >
         {cells}
-        <div role="cell" className="flex justify-end p-2">
+        <div role="cell" className="ml-auto flex shrink-0 justify-end p-2 max-md:order-first">
           <button
             type="button"
             aria-expanded={open}
@@ -35,6 +43,8 @@ export function EditableRow({
             <span className="sr-only"> {name}</span>
           </button>
         </div>
+        {/* Phones: the name and Edit get their own line; the other cells wrap below. */}
+        <div aria-hidden="true" className="h-0 basis-full max-md:order-first md:hidden" />
       </div>
       {open ? (
         <div id={panelId} className="bg-bg flex flex-col gap-3 p-3">
