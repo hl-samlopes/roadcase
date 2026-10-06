@@ -8,7 +8,7 @@ Full scope: `docs/SCOPE.md`. Current work: `docs/PHASE4_PLAN.md` (earlier phases
 - Next.js (App Router, TypeScript strict), React Server Components where possible
 - PostgreSQL with Prisma (migrations in `prisma/migrations`)
 - Auth.js with a Credentials provider now (username + password, argon2 hashing); Google OAuth added in Phase 4
-- S3-compatible storage for photos and documents (local MinIO in dev) via `@aws-sdk/client-s3`; the bucket is private and files are served only through permission-checked routes, except the public `branding/` prefix
+- S3-compatible storage for photos and documents (local MinIO in dev) via `@aws-sdk/client-s3`; the bucket is private and files are served only through permission-checked routes, except branding images, which the public `/branding` route serves (or MinIO's public `branding/` prefix in development)
 - Background jobs (pg-boss) for email, Slack, PDF generation
 - Tailwind CSS with CSS variables for theming; no component library that fights the theme system
 - Vitest for unit tests, Playwright for end-to-end
@@ -56,3 +56,4 @@ Rules: text contrast at least 4.5:1, status never by color alone (always a text 
 - `npm run seed` seed campuses, admin, defaults
 - `npm test`, `npm run test:e2e` (starts its own dev server on port 3100 against a throwaway `roadcase_e2e` database rebuilt each run)
 - `npm run services:up` start Postgres, MinIO and Mailpit (Docker; read local email at http://localhost:8025)
+- Hosting: Railway (web and worker from one `Dockerfile`), Cloudflare R2 and Resend; see `docs/DEPLOY.md`. `main` deploys

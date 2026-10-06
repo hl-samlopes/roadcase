@@ -31,13 +31,16 @@ const fontNames: Record<HeadingFont | BodyFont, string> = {
   PLUS_JAKARTA_SANS: "Plus Jakarta Sans",
 };
 
+const absolute = (url: string | null) => (url?.startsWith("/") ? appUrl(url) : url);
+
 /** Organization branding as emails use it: always the light colors. */
 export async function emailBrand(organizationId: string): Promise<EmailBrand> {
   const branding = await getBranding(organizationId);
   const theme = resolveTheme(branding, null);
   return {
     name: displayName(branding),
-    logoUrl: logoUrls(branding).light,
+    // Email needs an absolute address; Roadcase's own /branding route is relative.
+    logoUrl: absolute(logoUrls(branding).light),
     colors: theme.light,
     headingFont: fontNames[theme.headingFont],
     bodyFont: fontNames[theme.bodyFont],
@@ -174,6 +177,7 @@ export async function sendEmail(payload: ParsedPayload<"email.send">) {
     text,
     html,
     attachments: composed.attachments,
+    idempotencyKey: payload.idempotencyKey,
   });
 
   await db.sentEmail.create({

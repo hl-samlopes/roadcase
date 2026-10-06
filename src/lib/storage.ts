@@ -40,7 +40,11 @@ export async function putObject(key: string, body: Uint8Array, contentType: stri
 export async function getObjectStream(key: string) {
   const result = await s3().send(new GetObjectCommand({ Bucket: bucket(), Key: key }));
   if (!result.Body) throw new Error("Empty object body");
-  return { body: result.Body.transformToWebStream(), contentLength: result.ContentLength };
+  return {
+    body: result.Body.transformToWebStream(),
+    contentLength: result.ContentLength,
+    contentType: result.ContentType,
+  };
 }
 
 /** Reads a whole object into memory; for small files such as signatures and contract PDFs. */

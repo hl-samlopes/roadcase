@@ -884,6 +884,16 @@ async function loadPortalOrganization(prisma: PrismaClient) {
     await prisma.item.update({ where: { id: itemId }, data: { primaryPhotoId: id } });
   }
 
+  // A branding file, for the public /branding route.
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: E2E_BUCKET,
+      Key: `branding/${organizationId}/logo-light-e2e.png`,
+      Body: png,
+      ContentType: "image/png",
+    }),
+  );
+
   const today = Date.parse(`${dateInZone(new Date(), appTimeZone())}T00:00:00Z`);
   const day = (offset: number) => new Date(today + offset * 86_400_000);
   await addDefaultBandPositions(prisma, organizationId, o.campus.id);

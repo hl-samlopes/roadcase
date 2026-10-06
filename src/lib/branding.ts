@@ -1,6 +1,9 @@
 import "server-only";
 import { cache } from "react";
+import { brandingAssetUrl } from "@/lib/branding-url";
 import { db } from "@/lib/db";
+
+export { brandingAssetUrl };
 
 export const DEFAULT_DISPLAY_NAME = "Roadcase";
 
@@ -13,13 +16,6 @@ export type Branding = NonNullable<Awaited<ReturnType<typeof getBranding>>>;
 
 export function displayName(branding: Branding | null): string {
   return branding?.displayName?.trim() || DEFAULT_DISPLAY_NAME;
-}
-
-/** Public URL of a branding image stored under the public branding/ prefix. */
-export function brandingAssetUrl(key: string | null | undefined): string | null {
-  const base = process.env.S3_PUBLIC_BASE_URL;
-  if (!key || !base || !key.startsWith("branding/")) return null;
-  return `${base.replace(/\/+$/, "")}/${key.split("/").map(encodeURIComponent).join("/")}`;
 }
 
 /** Light and dark logo URLs; a single uploaded logo is used for both modes. */
