@@ -54,6 +54,7 @@ export const actionLevels = {
   "ticket:manage": "EDITOR",
   "serviceLog:read": "VIEWER",
   "serviceLog:manage": "EDITOR",
+  "checkout:read": "VIEWER",
   "checkout:manage": "EDITOR",
   "fields:manage": "ADMIN",
   "conditions:manage": "ADMIN",
@@ -245,5 +246,53 @@ export function canCommentOnTicket(
   return (
     can(actor, "ticket:comment", ticket) ||
     (ticket.reporterId === actor.id && can(actor, "ticket:submit", ticket))
+  );
+}
+
+/**
+ * A check-out is a campus-level resource: organization and campus grants
+ * cover it, while location and department grants (narrower than a campus)
+ * don't, so running check-outs needs editor access to the whole campus.
+ */
+export function checkoutScope(checkout: {
+  organizationId: string;
+  campusId: string;
+}): ScopedResource {
+  return { organizationId: checkout.organizationId, campusId: checkout.campusId };
+}
+
+export function canManageCheckout(
+  actor: Actor,
+  checkout: { organizationId: string; campusId: string },
+): boolean {
+  return can(actor, "checkout:manage", checkoutScope(checkout));
+}
+
+/**
+ * Whether the actor may put this item on this check-out: they manage the
+ * check-out, can see the item, and the item belongs to the check-out's campus.
+ * (Availability, such as condition or another check-out, is checked separately.)
+ */
+export function canAddItemToCheckout(
+  actor: Actor,
+  checkout: { organizationId: string; campusId: string },
+  item: ScopedResource,
+): boolean {
+  return (
+    canManageCheckout(actor, checkout) &&
+    can(actor, "item:read", item) &&
+    item.organizationId === checkout.organizationId &&
+    item.campusId === checkout.campusId
+  );
+}
+
+/** Campuses (of those given) where the actor may perform a check-out action. */
+export function checkoutCampusIds(
+  actor: Actor,
+  action: "checkout:read" | "checkout:manage",
+  campusIds: string[],
+): string[] {
+  return campusIds.filter((campusId) =>
+    can(actor, action, { organizationId: actor.organizationId, campusId }),
   );
 }

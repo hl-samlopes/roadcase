@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   can,
+  canAddItemToCheckout,
   canCommentOnTicket,
+  canManageCheckout,
+  checkoutCampusIds,
   canManageGrantScope,
   canManageUser,
   effectiveLevel,
@@ -328,5 +331,54 @@ describe("ticket comments", () => {
   it("does not let plain viewers comment, even on tickets they reported", () => {
     const viewer = actor([grant({ level: "VIEWER", scopeType: "ORGANIZATION" })]);
     expect(canCommentOnTicket(viewer, ticket)).toBe(false);
+  });
+});
+
+describe("check-outs", () => {
+  const hlkCheckout = { organizationId: ORG, campusId: HLK };
+
+  it("need an editor grant over the whole campus to manage", () => {
+    const campusEditor = actor([grant({ level: "EDITOR", scopeType: "CAMPUS", campusId: HLK })]);
+    const orgEditor = actor([grant({ level: "EDITOR", scopeType: "ORGANIZATION" })]);
+    const campusViewer = actor([grant({ level: "VIEWER", scopeType: "CAMPUS", campusId: HLK })]);
+    const locationEditor = actor([
+      grant({ level: "EDITOR", scopeType: "LOCATION", locationId: MEADOW_RANCH }),
+    ]);
+    const departmentEditor = actor([
+      grant({ level: "EDITOR", scopeType: "DEPARTMENT", departmentId: PRODUCTION }),
+    ]);
+    const otherCampusEditor = actor([
+      grant({ level: "EDITOR", scopeType: "CAMPUS", campusId: HNE }),
+    ]);
+    expect(canManageCheckout(campusEditor, hlkCheckout)).toBe(true);
+    expect(canManageCheckout(orgEditor, hlkCheckout)).toBe(true);
+    expect(canManageCheckout(campusViewer, hlkCheckout)).toBe(false);
+    expect(canManageCheckout(locationEditor, hlkCheckout)).toBe(false);
+    expect(canManageCheckout(departmentEditor, hlkCheckout)).toBe(false);
+    expect(canManageCheckout(otherCampusEditor, hlkCheckout)).toBe(false);
+    expect(canManageCheckout(orgEditor, { organizationId: OTHER_ORG, campusId: HLK })).toBe(false);
+    expect(can(campusViewer, "checkout:read", hlkCheckout)).toBe(true);
+  });
+
+  it("take only items the person can see, from the check-out's campus", () => {
+    const campusEditor = actor([grant({ level: "EDITOR", scopeType: "CAMPUS", campusId: HLK })]);
+    expect(canAddItemToCheckout(campusEditor, hlkCheckout, meadowRanchMixer)).toBe(true);
+    expect(canAddItemToCheckout(campusEditor, hlkCheckout, hlkKitchenFridge)).toBe(true);
+    // Another campus's item, even for someone who can see it.
+    const orgEditor = actor([grant({ level: "EDITOR", scopeType: "ORGANIZATION" })]);
+    expect(canAddItemToCheckout(orgEditor, hlkCheckout, hneMainMic)).toBe(false);
+    // Manages HLK check-outs but can't see HNE items at all.
+    expect(
+      canAddItemToCheckout(campusEditor, { organizationId: ORG, campusId: HNE }, hneMainMic),
+    ).toBe(false);
+  });
+
+  it("lists the campuses where someone may read or manage", () => {
+    const mixed = actor([
+      grant({ level: "EDITOR", scopeType: "CAMPUS", campusId: HLK }),
+      grant({ level: "VIEWER", scopeType: "CAMPUS", campusId: HNE }),
+    ]);
+    expect(checkoutCampusIds(mixed, "checkout:manage", [HLK, HNE])).toEqual([HLK]);
+    expect(checkoutCampusIds(mixed, "checkout:read", [HLK, HNE])).toEqual([HLK, HNE]);
   });
 });
