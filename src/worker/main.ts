@@ -39,8 +39,20 @@ const boss = createBoss({ supervise: true });
 await boss.start();
 await ensureQueues(boss);
 
+/**
+ * Email comes in bursts (a ticket or request fans out to several people), so
+ * up to four send at once; each is keyed, so running side by side is safe.
+ * Other queues take one job at a time. Every queue checks for work each second.
+ */
+const concurrency: { [Q in QueueName]?: number } = { "email.send": 4 };
+
 for (const [queue, handler] of Object.entries(handlers) as [QueueName, JobHandler<QueueName>][]) {
-  await boss.work(queue, { includeMetadata: true }, async ([job]) => {
+  const options = {
+    includeMetadata: true,
+    pollingIntervalSeconds: 1,
+    localConcurrency: concurrency[queue] ?? 1,
+  } as const;
+  await boss.work(queue, options, async ([job]) => {
     const result = (await runJob(queue, job, handler)) as { skipped?: string | null } | undefined;
     // Skips (for example a recipient who lost access) are normal, not failures.
     const note = result?.skipped ? `skipped: ${result.skipped}` : "done";
