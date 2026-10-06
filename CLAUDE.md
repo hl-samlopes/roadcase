@@ -47,7 +47,8 @@ Rules: text contrast at least 4.5:1, status never by color alone (always a text 
 
 ## Commands
 - `npm run dev` start the app
+- `npm run worker` start the background job worker (email; later Slack and PDFs)
 - `npx prisma migrate dev` apply migrations
 - `npm run seed` seed campuses, admin, defaults
 - `npm test`, `npm run test:e2e` (starts its own dev server on port 3100 against a throwaway `roadcase_e2e` database rebuilt each run)
-- `npm run services:up` start Postgres and MinIO (Docker)
+- `npm run services:up` start Postgres, MinIO and Mailpit (Docker; read local email at http://localhost:8025)
