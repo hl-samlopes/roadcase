@@ -17,8 +17,14 @@ const principal: PortalPrincipal = {
 const own = { organizationId: "org-1", campusId: "campus-1", guestGroupId: "group-1" };
 
 describe("portalCan", () => {
-  it("lets a group see its own portal", () => {
+  it("lets a group see its own portal and catalog, and edit its own request", () => {
     expect(portalCan(principal, "portal:view", own)).toBe(true);
+    expect(portalCan(principal, "catalog:read", own)).toBe(true);
+    expect(portalCan(principal, "request:edit", own)).toBe(true);
+  });
+
+  it("never edits another group's request", () => {
+    expect(portalCan(principal, "request:edit", { ...own, guestGroupId: "group-2" })).toBe(false);
   });
 
   it("never reaches another group, campus or organization", () => {

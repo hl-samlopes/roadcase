@@ -137,6 +137,7 @@ model Organization {
   contracts                Contract[]
   guestGroups              GuestGroup[]
   portalLinks              PortalLink[]
+  equipmentRequests        EquipmentRequest[]
 }
 
 model Campus {
@@ -310,17 +311,23 @@ model PermissionGrant {
 // ---------------------------------------------------------------------------
 
 model Category {
-  id             String    @id @default(uuid(7)) @db.Uuid
-  organizationId String    @db.Uuid
-  name           String
-  position       Int       @default(0)
-  archivedAt     DateTime? @db.Timestamptz(3)
-  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+  id                String    @id @default(uuid(7)) @db.Uuid
+  organizationId    String    @db.Uuid
+  name              String
+  position          Int       @default(0)
+  /// Whether guest groups see this category's items in the portal catalog.
+  /// Off by default, so nothing is shown to guests until an admin opts in.
+  showInPortal      Boolean   @default(false)
+  /// Optional text shown to guests above the category in the portal.
+  portalDescription String?
+  archivedAt        DateTime? @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
 
-  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  organization  Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   subcategories Subcategory[]
   items         Item[]
+  requestLines  EquipmentRequestLine[]
 
   @@unique([organizationId, name])
 }
@@ -943,12 +950,13 @@ model GuestGroup {
   createdAt      DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  campus       Campus       @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  staffContact User?        @relation("GuestGroupStaffContact", fields: [staffContactId], references: [id], onDelete: SetNull)
-  createdBy    User?        @relation("GuestGroupCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  campus       Campus            @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  staffContact User?             @relation("GuestGroupStaffContact", fields: [staffContactId], references: [id], onDelete: SetNull)
+  createdBy    User?             @relation("GuestGroupCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   portalLinks  PortalLink[]
   checkouts    Checkout[]
+  request      EquipmentRequest?
 
   @@index([campusId, departureDate])
 }
@@ -976,4 +984,61 @@ model PortalLink {
   createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([guestGroupId, createdAt])
+}
+
+enum EquipmentRequestStatus {
+  /// The group is still building it; staff don't see it in the queue.
+  DRAFT
+  SUBMITTED
+  /// Staff have started reviewing; the group can no longer change it.
+  IN_REVIEW
+  APPROVED
+  PARTLY_APPROVED
+  DECLINED
+  /// The group took it back; it can be changed and sent again.
+  WITHDRAWN
+}
+
+/// A guest group's equipment request: quantities of kinds of items (same
+/// name in the same category), made in the portal. One per group.
+model EquipmentRequest {
+  id             String                 @id @default(uuid(7)) @db.Uuid
+  organizationId String                 @db.Uuid
+  campusId       String                 @db.Uuid
+  guestGroupId   String                 @unique @db.Uuid
+  status         EquipmentRequestStatus @default(DRAFT)
+  /// The group's note to staff.
+  note           String?
+  /// When the group last sent it (first send or later changes).
+  submittedAt    DateTime?              @db.Timestamptz(3)
+  createdAt      DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime               @updatedAt @db.Timestamptz(3)
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  guestGroup   GuestGroup             @relation(fields: [guestGroupId], references: [id], onDelete: Cascade)
+  lines        EquipmentRequestLine[]
+
+  @@index([campusId, status])
+}
+
+/// One kind of item on a request. The kind is the category plus the item
+/// name, lowercased with spaces collapsed (`kindKey`); `name` is how it read
+/// when requested.
+model EquipmentRequestLine {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  requestId         String   @db.Uuid
+  categoryId        String   @db.Uuid
+  kindKey           String
+  name              String
+  quantityRequested Int
+  /// Set by staff when they review (Step 2).
+  quantityApproved  Int?
+  staffNote         String?
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+
+  request  EquipmentRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  category Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@unique([requestId, categoryId, kindKey])
 }

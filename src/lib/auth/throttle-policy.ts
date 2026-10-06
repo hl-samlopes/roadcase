@@ -37,6 +37,16 @@ export const portalAddressLimit: ThrottleLimit = {
   lockMs: 15 * MINUTE,
 };
 
+/**
+ * Changes made through one portal link: 30 saves in 15 minutes pauses that
+ * link's changes for 15 minutes. Each save counts, successful or not.
+ */
+export const portalWriteLimit: ThrottleLimit = {
+  maxFailures: 30,
+  windowMs: 15 * MINUTE,
+  lockMs: 15 * MINUTE,
+};
+
 export interface ThrottleState {
   failures: number;
   windowStartedAt: Date;
@@ -71,6 +81,10 @@ export function accountKey(organizationSlug: string, username: string): string {
 
 export function addressKey(ip: string): string {
   return `ip:${ip}`;
+}
+
+export function portalLinkKey(linkId: string): string {
+  return `portal-link:${linkId}`;
 }
 
 export function portalAddressKey(ip: string): string {

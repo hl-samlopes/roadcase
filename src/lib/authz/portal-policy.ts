@@ -16,8 +16,11 @@ export interface PortalPrincipal {
   linkId: string;
 }
 
-/** What a portal visitor can do. Later steps add the catalog and requests. */
-export const portalActions = ["portal:view"] as const;
+/**
+ * What a portal visitor can do: see its page and the catalog for its
+ * campus, and build its own equipment request.
+ */
+export const portalActions = ["portal:view", "catalog:read", "request:edit"] as const;
 export type PortalAction = (typeof portalActions)[number];
 
 /** Something that belongs to one guest group. */
