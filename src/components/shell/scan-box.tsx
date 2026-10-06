@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { CameraScanButton } from "@/components/camera-scan";
 import { buttonClass, controlClass } from "@/components/ui";
 
 /** Whether a key press is going into a field, so the "/" shortcut leaves it alone. */
@@ -56,6 +57,7 @@ export function ScanBox({ className = "" }: { className?: string }) {
       <button type="submit" className={buttonClass("secondary")}>
         Open item
       </button>
+      <CameraScanButton targetId="scan-code" label="Camera" />
     </form>
   );
 }

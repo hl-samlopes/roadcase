@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { CameraScanButton } from "@/components/camera-scan";
 import { buttonClass } from "@/components/ui";
 
 interface Line {
@@ -71,6 +72,9 @@ export function CheckInFields({ lines, conditions }: { lines: Line[]; conditions
             event.currentTarget.value = "";
           }}
         />
+        <div>
+          <CameraScanButton onCode={scanned} />
+        </div>
         <p className="text-muted" role="status" aria-live="polite">
           {message || `${ticked.size} of ${lines.length} ticked.`}
         </p>

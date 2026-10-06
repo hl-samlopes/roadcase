@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
+import { CameraScanButton } from "@/components/camera-scan";
 import { CheckoutStatusBadge } from "@/components/status-badge";
 import { Card, PageHeader, TextField } from "@/components/ui";
 import { can, canManageCheckout, checkoutScope, requireUser } from "@/lib/authz";
@@ -208,6 +209,9 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
               placeholder={`${checkout.campus.code}-000123`}
               hint="Scan items one after another, or paste several codes separated by spaces."
             />
+            <div>
+              <CameraScanButton targetId="checkout-codes" />
+            </div>
           </ActionForm>
 
           <form
