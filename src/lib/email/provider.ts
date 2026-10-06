@@ -16,6 +16,13 @@ export interface EmailMessage {
   /** Always sent alongside the HTML. */
   text: string;
   html: string;
+  attachments?: EmailAttachment[];
+}
+
+export interface EmailAttachment {
+  filename: string;
+  contentType: string;
+  content: Uint8Array;
 }
 
 export interface EmailProvider {
@@ -42,6 +49,11 @@ export function mailpitProvider(baseUrl: string, fetchImpl: typeof fetch = fetch
           Subject: message.subject,
           Text: message.text,
           HTML: message.html,
+          Attachments: (message.attachments ?? []).map((attachment) => ({
+            Filename: attachment.filename,
+            ContentType: attachment.contentType,
+            Content: Buffer.from(attachment.content).toString("base64"),
+          })),
         }),
         signal: AbortSignal.timeout(15_000),
       });

@@ -10,7 +10,8 @@ import { loadCandidate, loadNoticeEvent, loadNoticeTicket } from "@/lib/notifica
 import { isTicketRecipient, ticketNotices } from "@/lib/notifications/recipients";
 import { resolveTheme } from "@/lib/theme/resolve";
 import { renderBrandedEmail, type EmailBrand, type EmailContent } from "./layout";
-import { emailProviderFromEnv, type EmailAddress } from "./provider";
+import { contractEmail } from "@/lib/contracts/email";
+import { emailProviderFromEnv, type EmailAddress, type EmailAttachment } from "./provider";
 import { testEmailContent } from "./templates";
 
 const fontNames: Record<HeadingFont | BodyFont, string> = {
@@ -47,7 +48,8 @@ const ticketData = z.object({
   notice: z.enum(ticketNotices),
 });
 
-type Composed = { to: EmailAddress; content: EmailContent } | { skip: string };
+type Composed =
+  { to: EmailAddress; content: EmailContent; attachments?: EmailAttachment[] } | { skip: string };
 
 /**
  * Works out the address and content at send time. Ticket emails are checked
@@ -90,6 +92,10 @@ async function compose(
         ),
       };
     }
+    case "contract": {
+      const composed = await contractEmail(organizationId, payload.data.contractId ?? "");
+      return "skip" in composed ? composed : { to, ...composed };
+    }
   }
 }
 
@@ -116,6 +122,7 @@ export async function sendEmail(payload: ParsedPayload<"email.send">) {
     subject: composed.content.subject,
     text,
     html,
+    attachments: composed.attachments,
   });
 
   await db.sentEmail.create({

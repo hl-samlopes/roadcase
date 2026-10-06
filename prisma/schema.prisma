@@ -134,6 +134,7 @@ model Organization {
   slackWebhooks            SlackWebhook[]
   checkouts                Checkout[]
   contractTemplateVersions ContractTemplateVersion[]
+  contracts                Contract[]
 }
 
 model Campus {
@@ -263,6 +264,8 @@ model User {
   checkoutsCreated              Checkout[]                @relation("CheckoutCreatedBy")
   checkoutLinesAdded            CheckoutLine[]
   contractTemplateVersionsSaved ContractTemplateVersion[]
+  contractsPrepared             Contract[]
+  signaturesCollected           ContractSignature[]       @relation("SignatureCollectedBy")
 
   @@unique([organizationId, username])
   @@unique([organizationId, email])
@@ -772,6 +775,7 @@ model Checkout {
   staffRep     User?          @relation("CheckoutStaffRep", fields: [staffRepId], references: [id], onDelete: SetNull)
   createdBy    User?          @relation("CheckoutCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   lines        CheckoutLine[]
+  contracts    Contract[]
 
   @@unique([organizationId, number])
   @@index([campusId, status])
@@ -824,6 +828,70 @@ model ContractTemplateVersion {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   campus       Campus       @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
   createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  contracts    Contract[]
 
   @@unique([campusId, version])
+}
+
+enum SignerRole {
+  GUEST
+  STAFF
+}
+
+/// The contract for a check-out, frozen when it's prepared for signing: the
+/// filled document, its plain text and the text's SHA-256. Database triggers
+/// stop the content from changing and a signed contract from being deleted.
+/// Voiding (before both signatures) keeps the row as history; a check-out has
+/// at most one contract that isn't voided.
+model Contract {
+  id                String    @id @default(uuid(7)) @db.Uuid
+  organizationId    String    @db.Uuid
+  checkoutId        String    @db.Uuid
+  templateVersionId String    @db.Uuid
+  /// The filled document exactly as shown to the signers (contract JSON).
+  document          Json
+  /// Plain text of the document (documentText); what the hash covers.
+  text              String
+  /// SHA-256 of `text`, hex.
+  textHash          String
+  preparedById      String?   @db.Uuid
+  preparedAt        DateTime  @default(now()) @db.Timestamptz(3)
+  /// Set when the second signature is recorded; the contract is then locked.
+  signedAt          DateTime? @db.Timestamptz(3)
+  voidedAt          DateTime? @db.Timestamptz(3)
+  /// Storage key of the generated PDF (private bucket), once the worker made it.
+  pdfKey            String?
+  pdfGeneratedAt    DateTime? @db.Timestamptz(3)
+
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  checkout        Checkout                @relation(fields: [checkoutId], references: [id], onDelete: Restrict)
+  templateVersion ContractTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
+  preparedBy      User?                   @relation(fields: [preparedById], references: [id], onDelete: SetNull)
+  signatures      ContractSignature[]
+
+  @@index([checkoutId])
+}
+
+/// One party's signature. Never changed or deleted (a trigger enforces it).
+/// The drawn image is in private storage and shown to admins only; it is
+/// never logged.
+model ContractSignature {
+  id            String     @id @default(uuid(7)) @db.Uuid
+  contractId    String     @db.Uuid
+  role          SignerRole
+  printedName   String
+  signedAt      DateTime   @default(now()) @db.Timestamptz(3)
+  ipAddress     String?
+  userAgent     String?
+  /// SHA-256 of the contract text the signer was shown (must equal the contract's).
+  textHash      String
+  consentText   String
+  imageKey      String
+  /// The staff account that collected the signature on its device.
+  collectedById String?    @db.Uuid
+
+  contract    Contract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  collectedBy User?    @relation("SignatureCollectedBy", fields: [collectedById], references: [id], onDelete: SetNull)
+
+  @@unique([contractId, role])
 }

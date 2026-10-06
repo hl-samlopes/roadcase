@@ -10,7 +10,7 @@ import {
   checkoutScope,
   scopeWhere,
   type Actor,
-} from "@/lib/authz";
+} from "@/lib/authz/policy";
 import { availability, refusalMessage, type Refusal } from "@/lib/checkouts/availability";
 import { db } from "@/lib/db";
 import { isUniqueViolation } from "@/lib/forms/prisma-errors";

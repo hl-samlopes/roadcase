@@ -17,7 +17,7 @@ const retry = {
   expireInSeconds: 300,
 } as const;
 
-export const emailTemplates = ["test", "ticket"] as const;
+export const emailTemplates = ["test", "ticket", "contract"] as const;
 
 /**
  * Who an email goes to. A user id is looked up when the email is sent, so a
@@ -68,6 +68,12 @@ export const queues = {
         notice: z.enum(ticketNotices),
       }),
     ]),
+  },
+  /** Makes the signed contract's PDF, stores it, then queues the emails to both parties. */
+  "contract.pdf": {
+    label: "Signed contract PDF",
+    options: retry,
+    payload: z.object({ organizationId: z.uuid(), contractId: z.uuid() }),
   },
   /** Fails its first attempts on purpose; only registered when JOBS_TEST_QUEUE=1 (e2e tests). */
   "test.flaky": {

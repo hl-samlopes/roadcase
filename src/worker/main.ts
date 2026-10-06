@@ -1,8 +1,9 @@
 /**
- * Background worker: processes queued jobs (email, ticket notifications and
- * Slack now; contract PDFs later) on the app's database. Run with `npm run worker` next to the
+ * Background worker: processes queued jobs (email, ticket notifications,
+ * Slack and signed contract PDFs) on the app's database. Run with `npm run worker` next to the
  * web app; any number of workers can run at once.
  */
+import { generateContractPdf } from "@/lib/contracts/pdf-job";
 import { sendEmail } from "@/lib/email/send";
 import { createBoss, ensureQueues } from "@/lib/jobs/boss";
 import { safeErrorMessage } from "@/lib/jobs/errors";
@@ -15,6 +16,7 @@ const handlers: { [Q in QueueName]?: JobHandler<Q> } = {
   "email.send": (data) => sendEmail(data),
   "ticket.notify": (data) => fanOutTicketNotice(data),
   "slack.post": (data) => postSlackJob(data),
+  "contract.pdf": (data) => generateContractPdf(data),
 };
 
 // e2e tests check retries and the failure log with a job that fails on purpose.

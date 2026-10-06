@@ -56,6 +56,7 @@ export const actionLevels = {
   "serviceLog:manage": "EDITOR",
   "checkout:read": "VIEWER",
   "checkout:manage": "EDITOR",
+  "checkout:audit": "ADMIN",
   "fields:manage": "ADMIN",
   "conditions:manage": "ADMIN",
   "categories:manage": "ADMIN",

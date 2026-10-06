@@ -1,5 +1,5 @@
 import "server-only";
-import { can, type Actor } from "@/lib/authz";
+import { can, type Actor } from "@/lib/authz/policy";
 import { getBranding } from "@/lib/branding";
 import { parseDocument, type ContractDoc, type MergeValues } from "@/lib/contracts/document";
 import { db } from "@/lib/db";

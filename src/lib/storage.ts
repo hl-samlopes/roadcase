@@ -43,6 +43,13 @@ export async function getObjectStream(key: string) {
   return { body: result.Body.transformToWebStream(), contentLength: result.ContentLength };
 }
 
+/** Reads a whole object into memory; for small files such as signatures and contract PDFs. */
+export async function getObjectBytes(key: string): Promise<Uint8Array> {
+  const result = await s3().send(new GetObjectCommand({ Bucket: bucket(), Key: key }));
+  if (!result.Body) throw new Error("Empty object body");
+  return result.Body.transformToByteArray();
+}
+
 export async function deleteObject(key: string) {
   await s3().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
 }
