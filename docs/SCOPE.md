@@ -111,9 +111,10 @@ Portal links can expire and are limited to what that group is allowed to see.
 The build runs in four phases; each ends with something Hume can use.
 
 1. **Phase 1, core:** organization and campuses, accounts and scoped permissions, inventory with custom fields, photos, codes and barcodes, service logs, and tickets with a queue.
-2. **Phase 2, check-out and alerts:** item lists, the editable contract, built-in e-signature and PDF email, rental fees, plus email and Slack notifications and the MaintainX sync.
+2. **Phase 2, check-out and alerts:** item lists, the editable contract, built-in e-signature and PDF email, rental fees, plus email and Slack notifications.
 3. **Phase 3, guest portal:** shareable portal links, equipment requests, the band builder and the input list.
 4. **Phase 4, Google and AI:** Google sign-in, Drive import and export, the AI agent, and RFID tag support.
+5. **Last, MaintainX:** one-way sync of tickets to MaintainX work orders (moved here from Phase 2 on Oct 6, 2026).
 
 **Architecture.** Next.js (TypeScript) app, PostgreSQL database, S3-compatible storage for photos and documents, a background worker for emails, Slack and PDFs, and every record tagged with its organization, campus, location and department so scoped permissions are enforced in one place.
 
@@ -122,6 +123,6 @@ The build runs in four phases; each ends with something Hume can use.
 - [ ] Which design concept do we pick (three concepts to be produced)?
 - [ ] Preferred hosting and budget (for example Vercel with Railway, or another provider)?
 - [ ] Which Slack workspace and channels, and which sending email address, for ticket notifications?
-- [ ] MaintainX: do you have an account, and should tickets sync one way or both ways?
+- [x] MaintainX: one-way sync, built at the end of the project. (Which account to test against is settled then.)
 - [ ] Does every item need a rental fee option, or only some categories?
 - [ ] Who approves guest requests from the portal?

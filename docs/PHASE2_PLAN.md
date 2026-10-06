@@ -18,7 +18,7 @@ These come from the open questions in `docs/SCOPE.md` and from building Phase 1.
 | Which item conditions can be checked out? | Step 2 | A new "Available for check-out" flag on conditions, on for New, Good and Fair |
 | Has counsel reviewed the contract template? | Step 4 (go-live) | Ship a placeholder template marked "Draft — not reviewed"; HNE replaces it |
 | E-signature requirements: consent wording, record retention | Step 4 | An explicit consent checkbox before signing (electronic records consent); keep signed contracts and their audit trail indefinitely |
-| MaintainX: do you have an account, and one-way or two-way sync? | Step 6 | Defer step 6 until answered |
+| MaintainX: do you have an account, and one-way or two-way sync? | Step 6 | **Answered (Oct 6, 2026):** one-way. Step 6 moves to the end of the project (after Phase 4) |
 
 ## New dependencies to approve (step 0)
 
@@ -89,14 +89,15 @@ These come from the open questions in `docs/SCOPE.md` and from building Phase 1.
 - Overdue checkouts are flagged in the list, and the worker emails the staff representative a reminder.
 - Done when: returning a checkout with one damaged item opens a ticket for that item only; the checkout shows Returned (or Partially returned) with its full history; overdue reminders arrive.
 
-## Step 6: MaintainX sync (after its questions are answered)
+## Step 6: MaintainX sync (deferred to the end of the project)
+
+Decided Oct 6, 2026: one-way sync, built after Phase 4. Phase 2 is complete without it. Tickets already carry `maintainxWorkOrderId` and items `maintainxAssetId`, so nothing built before then needs to change. The account question (test workspace or production only) is answered when this starts.
 
 - Connection settings for organization admins. The API key is a secret: stored encrypted and never logged.
 - Map items to MaintainX assets, using the existing `maintainxAssetId` field.
 - One-way: opening or updating a ticket creates or updates a work order (using the existing `maintainxWorkOrderId` field).
-- Two-way (if chosen): a webhook from MaintainX for completed work orders writes the service log and completes the ticket, verified and idempotent.
 - A sync log page shows each push and webhook with its result, and failed syncs can be retried.
-- Done when: the direction HNE chooses works end to end in a MaintainX sandbox, and a sync failure never blocks working in Roadcase.
+- Done when: one-way sync works end to end against a MaintainX test workspace (or a faithful stand-in), and a sync failure never blocks working in Roadcase.
 
 ## Phase 1 follow-ups (schedule any time)
 

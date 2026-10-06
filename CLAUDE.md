@@ -23,7 +23,7 @@ Full scope: `docs/SCOPE.md`. Current work: `docs/PHASE1_PLAN.md`. Read both befo
 - Item conditions are defined per organization (Settings > Item conditions): one is the default for new items, and any can be flagged to start a repair ticket. Never hard-code condition names.
 - Each item gets a unique code (`HNE-000123`) and a Code 128 barcode. RFID tag support is planned: keep a nullable tag table now, build the UI later.
 - Built-in e-signature for contracts (drawn signature, timestamp, IP), generated PDF emailed to both parties.
-- MaintainX sync is planned for Phase 2; design tickets so they can map to MaintainX work orders.
+- MaintainX sync is one-way (Roadcase tickets create and update MaintainX work orders) and is built last, after Phase 4; keep tickets mappable to work orders until then.
 - The app starts empty. No inventory import.
 - Branding is per organization and editable by organization admins in Settings > Appearance: logos (light and dark) and favicon, colors, heading and body fonts, app and sign-in background images, a custom sign-in page, and the display name used in the header, emails and contract PDFs. The guest portal and PDFs use the same branding. Roadcase's own look (Concept A) is the default until an organization sets its own.
 
