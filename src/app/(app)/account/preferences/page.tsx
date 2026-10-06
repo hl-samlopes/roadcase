@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { ActionForm } from "@/components/action-form";
-import { Card, PageHeader } from "@/components/ui";
+import { Card, CheckboxField, PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/authz";
 import { getBranding } from "@/lib/branding";
 import { getPreference } from "@/lib/preferences";
@@ -12,9 +12,17 @@ import {
   textScaleOptions,
 } from "@/lib/theme/presets";
 import { availableAccents, availableFontPairings, isTextScale } from "@/lib/theme/resolve";
-import { savePreferencesAction } from "./actions";
+import { emailPreferenceFields, emailPreferencesOf } from "@/lib/notifications/recipients";
+import { saveEmailPreferencesAction, savePreferencesAction } from "./actions";
 
 export const metadata: Metadata = { title: "Preferences" };
+
+const emailChoices = [
+  { notice: "opened", label: "A ticket opens for equipment I manage" },
+  { notice: "assigned", label: "A ticket is assigned to me or my department" },
+  { notice: "completed", label: "A ticket I reported is completed" },
+  { notice: "comment", label: "Someone comments on a ticket I reported or am assigned to" },
+] as const;
 
 const modes = [
   { value: "LIGHT", label: "Light" },
@@ -73,7 +81,7 @@ export default async function PreferencesPage() {
     : DEFAULT_TEXT_SCALE;
 
   return (
-    <div className="max-w-lg">
+    <div className="flex max-w-lg flex-col gap-4">
       <PageHeader title="Preferences" />
       <Card>
         <ActionForm
@@ -156,6 +164,31 @@ export default async function PreferencesPage() {
               </Choice>
             ))}
           </fieldset>
+        </ActionForm>
+      </Card>
+
+      <Card title="Email">
+        <ActionForm
+          action={saveEmailPreferencesAction}
+          submitLabel="Save email preferences"
+          resetOnSuccess={false}
+          className="flex flex-col gap-4"
+        >
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 font-semibold">Email me when</legend>
+            {emailChoices.map((choice) => (
+              <CheckboxField
+                key={choice.notice}
+                name={emailPreferenceFields[choice.notice]}
+                label={choice.label}
+                defaultChecked={emailPreferencesOf(preference)[choice.notice]}
+              />
+            ))}
+          </fieldset>
+          <p className="text-muted">
+            You only get email about tickets you can see. Slack alerts are set per campus or
+            department by admins.
+          </p>
         </ActionForm>
       </Card>
     </div>

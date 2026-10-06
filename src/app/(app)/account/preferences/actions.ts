@@ -7,6 +7,11 @@ import { requireUser } from "@/lib/authz";
 import { getBranding } from "@/lib/branding";
 import { db } from "@/lib/db";
 import { formObject, invalid, type FormState } from "@/lib/forms/state";
+import {
+  emailPreferenceFields,
+  ticketNotices,
+  type TicketNotice,
+} from "@/lib/notifications/recipients";
 import { availableAccents, availableFontPairings, isTextScale } from "@/lib/theme/resolve";
 
 const schema = z.object({
@@ -56,4 +61,24 @@ export async function savePreferencesAction(
   });
   revalidatePath("/", "layout");
   return { success: "Preferences saved." };
+}
+
+export async function saveEmailPreferencesAction(
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const user = await requireUser();
+  const data = Object.fromEntries(
+    ticketNotices.map((notice) => [
+      emailPreferenceFields[notice],
+      formData.get(emailPreferenceFields[notice]) === "on",
+    ]),
+  ) as Record<(typeof emailPreferenceFields)[TicketNotice], boolean>;
+  await db.userPreference.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, ...data },
+    update: data,
+  });
+  revalidatePath("/account/preferences");
+  return { success: "Email preferences saved." };
 }
