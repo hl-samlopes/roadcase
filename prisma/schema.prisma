@@ -138,6 +138,9 @@ model Organization {
   guestGroups              GuestGroup[]
   portalLinks              PortalLink[]
   equipmentRequests        EquipmentRequest[]
+  bandPositions            BandPosition[]
+  bandSetups               BandSetup[]
+  inputLists               InputList[]
 }
 
 model Campus {
@@ -163,6 +166,7 @@ model Campus {
   checkouts                Checkout[]
   contractTemplateVersions ContractTemplateVersion[]
   guestGroups              GuestGroup[]
+  bandPositions            BandPosition[]
 
   @@unique([organizationId, code])
   @@unique([id, organizationId])
@@ -275,6 +279,7 @@ model User {
   guestGroupsCreated            GuestGroup[]              @relation("GuestGroupCreatedBy")
   portalLinksCreated            PortalLink[]
   equipmentRequestsDecided      EquipmentRequest[]        @relation("EquipmentRequestDecidedBy")
+  inputListsEdited              InputList[]               @relation("InputListEditedBy")
 
   @@unique([organizationId, username])
   @@unique([organizationId, email])
@@ -670,6 +675,8 @@ model UserPreference {
   emailTicketComment   Boolean  @default(true)
   /// A guest group sends (or changes) an equipment request where I run check-outs.
   emailRequestSent     Boolean  @default(true)
+  /// A guest group sends (or changes) its band setup where I run check-outs.
+  emailBandSent        Boolean  @default(true)
   updatedAt            DateTime @updatedAt @db.Timestamptz(3)
 
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -961,6 +968,8 @@ model GuestGroup {
   portalLinks  PortalLink[]
   checkouts    Checkout[]
   request      EquipmentRequest?
+  bandSetup    BandSetup?
+  inputList    InputList?
 
   @@index([campusId, departureDate])
 }
@@ -1055,4 +1064,94 @@ model EquipmentRequestLine {
   category Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   @@unique([requestId, categoryId, kindKey])
+}
+
+/// A band position a campus offers guests (Vocal, Drums, ...) and the inputs
+/// each player in it needs. Campus admins edit them; a campus starts with the
+/// defaults (src/lib/band/input-list.ts) from the seed.
+model BandPosition {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  campusId       String    @db.Uuid
+  name           String
+  position       Int       @default(0)
+  /// [{ source, connection: "MIC" | "DI" | "LINE", stand, notes }], checked on save.
+  inputs         Json
+  archivedAt     DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  campus       Campus       @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  members      BandMember[]
+
+  @@unique([campusId, name])
+}
+
+enum BandSetupStatus {
+  DRAFT
+  SUBMITTED
+}
+
+/// A guest group's band, from the portal: its players by position and what
+/// else it needs. The group can change it any time; staff's adjusted input
+/// list is kept apart (InputList), so changes here never overwrite it.
+model BandSetup {
+  id               String          @id @default(uuid(7)) @db.Uuid
+  organizationId   String          @db.Uuid
+  campusId         String          @db.Uuid
+  guestGroupId     String          @unique @db.Uuid
+  status           BandSetupStatus @default(DRAFT)
+  /// How many channels the group thinks it needs, as a check on the list.
+  expectedChannels Int?
+  inEarMonitors    Boolean         @default(false)
+  clickTrack       Boolean         @default(false)
+  notes            String?
+  /// When the group last sent it to the audio team.
+  submittedAt      DateTime?       @db.Timestamptz(3)
+  createdAt        DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime        @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  guestGroup   GuestGroup   @relation(fields: [guestGroupId], references: [id], onDelete: Cascade)
+  members      BandMember[]
+}
+
+/// One player in a band setup.
+model BandMember {
+  id         String  @id @default(uuid(7)) @db.Uuid
+  setupId    String  @db.Uuid
+  positionId String  @db.Uuid
+  order      Int
+  /// The group's name or note for this player, e.g. "Lead vocal, wireless if possible".
+  label      String?
+
+  setup    BandSetup    @relation(fields: [setupId], references: [id], onDelete: Cascade)
+  position BandPosition @relation(fields: [positionId], references: [id], onDelete: Restrict)
+
+  @@index([setupId])
+}
+
+/// Staff's input list for a group: made from the band setup, then adjusted
+/// by staff. The group sees it once shared; until then, the portal shows the
+/// list generated from its setup.
+model InputList {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  organizationId     String    @db.Uuid
+  guestGroupId       String    @unique @db.Uuid
+  /// [{ source, connection, stand, notes }] in channel order, checked on save.
+  channels           Json
+  /// The band setup's sent time this list was built from, to spot later changes.
+  basedOnSubmittedAt DateTime? @db.Timestamptz(3)
+  editedAt           DateTime  @default(now()) @db.Timestamptz(3)
+  editedById         String?   @db.Uuid
+  sharedAt           DateTime? @db.Timestamptz(3)
+  /// Bumped on every save; the PDF is made for one version.
+  version            Int       @default(1)
+  pdfKey             String?
+  pdfVersion         Int?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  guestGroup   GuestGroup   @relation(fields: [guestGroupId], references: [id], onDelete: Cascade)
+  editedBy     User?        @relation("InputListEditedBy", fields: [editedById], references: [id], onDelete: SetNull)
 }

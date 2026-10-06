@@ -66,6 +66,8 @@ export const actionLevels = {
   "grants:manage": "ADMIN",
   "settings:manage": "ADMIN",
   "contracts:manage": "ADMIN",
+  /** Band positions and their inputs, per campus (Settings > Band positions). */
+  "bandPositions:manage": "ADMIN",
 } as const satisfies Record<string, PermissionLevel>;
 
 export type Action = keyof typeof actionLevels;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decisionStatus, guestCanEdit, isRequestApprover } from "./requests";
+import { decisionStatus, guestCanEdit, isBandRecipient, isRequestApprover } from "./requests";
 
 describe("decisionStatus", () => {
   it("is Approved when every line gets what was asked (or more)", () => {
@@ -77,5 +77,31 @@ describe("isRequestApprover", () => {
     expect(isRequestApprover(editor({ level: "VIEWER" }), request)).toBe(false);
     expect(isRequestApprover(editor({}, { emailRequestSent: false }), request)).toBe(false);
     expect(isRequestApprover(editor({}, { isActive: false }), request)).toBe(false);
+  });
+});
+
+describe("isBandRecipient", () => {
+  const place = { organizationId: "org", campusId: "hne" };
+  const editor = {
+    id: "u1",
+    organizationId: "org",
+    isActive: true,
+    emailBandSent: true,
+    grants: [
+      {
+        level: "EDITOR" as const,
+        scopeType: "CAMPUS" as const,
+        campusId: "hne",
+        locationId: null,
+        departmentId: null,
+        canSubmitTickets: false,
+      },
+    ],
+  };
+
+  it("emails people who run check-outs at the campus, unless they turned it off", () => {
+    expect(isBandRecipient(editor, place)).toBe(true);
+    expect(isBandRecipient({ ...editor, emailBandSent: false }, place)).toBe(false);
+    expect(isBandRecipient(editor, { ...place, campusId: "hlk" })).toBe(false);
   });
 });

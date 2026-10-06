@@ -22,6 +22,7 @@ const preferenceSelect = {
   emailTicketCompleted: true,
   emailTicketComment: true,
   emailRequestSent: true,
+  emailBandSent: true,
 } as const;
 
 export function loadNoticeTicket(organizationId: string, ticketId: string) {
@@ -75,7 +76,11 @@ type CandidateRow = {
   displayName: string;
   grants: NoticeCandidate["grants"];
   preference:
-    (NonNullable<Parameters<typeof emailPreferencesOf>[0]> & { emailRequestSent: boolean }) | null;
+    | (NonNullable<Parameters<typeof emailPreferencesOf>[0]> & {
+        emailRequestSent: boolean;
+        emailBandSent: boolean;
+      })
+    | null;
 };
 
 function toCandidate(user: CandidateRow) {
@@ -88,6 +93,7 @@ function toCandidate(user: CandidateRow) {
     grants: user.grants,
     emailPreferences: emailPreferencesOf(user.preference),
     emailRequestSent: user.preference?.emailRequestSent ?? true,
+    emailBandSent: user.preference?.emailBandSent ?? true,
   };
 }
 

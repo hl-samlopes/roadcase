@@ -1,5 +1,6 @@
 import { hash } from "argon2";
-import type { PrismaClient } from "../../src/generated/prisma/client.ts";
+import type { Prisma, PrismaClient } from "../../src/generated/prisma/client.ts";
+import { defaultBandPositions } from "../../src/lib/band/input-list.ts";
 import { campuses, categories, itemConditions, organization } from "./data.ts";
 import type { SeedEnv } from "./env.ts";
 
@@ -11,7 +12,8 @@ import type { SeedEnv } from "./env.ts";
  * - the admin is created only while the organization has no active
  *   organization-wide admin (so renaming the admin never creates a second one);
  * - default categories and conditions are added only to an organization that
- *   has none yet (so renamed or removed defaults stay that way).
+ *   has none yet (so renamed or removed defaults stay that way);
+ * - default band positions are added only to a campus that has none.
  */
 export async function seed(prisma: PrismaClient, env: SeedEnv, log: (message: string) => void) {
   const passwordHash = await hash(env.SEED_ADMIN_PASSWORD);
@@ -38,6 +40,16 @@ export async function seed(prisma: PrismaClient, env: SeedEnv, log: (message: st
       });
     }
     log(`Campuses: ${campuses.map((c) => c.code).join(", ")}`);
+
+    const seeded: string[] = [];
+    for (const campus of await tx.campus.findMany({ where: { organizationId: org.id } })) {
+      if (await addDefaultBandPositions(tx, org.id, campus.id)) seeded.push(campus.code);
+    }
+    log(
+      seeded.length > 0
+        ? `Band positions: defaults added for ${seeded.join(", ")}`
+        : "Band positions: already set up; left unchanged",
+    );
 
     const hasAdmin = await tx.permissionGrant.count({
       where: {
@@ -113,4 +125,23 @@ export async function seed(prisma: PrismaClient, env: SeedEnv, log: (message: st
       log("Item conditions: already set up; left unchanged");
     }
   });
+}
+
+/** Adds the default band positions to a campus that has none. Returns whether it added them. */
+export async function addDefaultBandPositions(
+  tx: Prisma.TransactionClient | PrismaClient,
+  organizationId: string,
+  campusId: string,
+): Promise<boolean> {
+  if ((await tx.bandPosition.count({ where: { campusId } })) > 0) return false;
+  await tx.bandPosition.createMany({
+    data: defaultBandPositions.map((position, index) => ({
+      organizationId,
+      campusId,
+      name: position.name,
+      position: index,
+      inputs: position.inputs,
+    })),
+  });
+  return true;
 }

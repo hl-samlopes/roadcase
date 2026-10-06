@@ -21,6 +21,7 @@ describe("portalCan", () => {
     expect(portalCan(principal, "portal:view", own)).toBe(true);
     expect(portalCan(principal, "catalog:read", own)).toBe(true);
     expect(portalCan(principal, "request:edit", own)).toBe(true);
+    expect(portalCan(principal, "band:edit", own)).toBe(true);
   });
 
   it("never edits another group's request", () => {

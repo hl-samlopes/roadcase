@@ -19,7 +19,8 @@ import {
   portalRequestEmail,
   requestSentEmail,
 } from "@/lib/portal/email";
-import { isRequestApprover } from "@/lib/portal/requests";
+import { isBandRecipient, isRequestApprover } from "@/lib/portal/requests";
+import { bandSentEmail } from "@/lib/band/email";
 import { emailProviderFromEnv, type EmailAddress, type EmailAttachment } from "./provider";
 import { testEmailContent } from "./templates";
 
@@ -128,6 +129,14 @@ async function compose(
     case "portal-decision": {
       const composed = await portalDecisionEmail(organizationId, payload.data);
       return "skip" in composed ? composed : { to, content: composed.content };
+    }
+    case "band-sent": {
+      const composed = await bandSentEmail(organizationId, payload.data);
+      if ("skip" in composed) return composed;
+      if (!candidate || !isBandRecipient(candidate, composed.place)) {
+        return { skip: "recipient can no longer see this group or opted out" };
+      }
+      return { to, content: composed.content };
     }
     case "request-sent": {
       const composed = await requestSentEmail(organizationId, payload.data);

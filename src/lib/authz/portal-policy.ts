@@ -18,9 +18,9 @@ export interface PortalPrincipal {
 
 /**
  * What a portal visitor can do: see its page and the catalog for its
- * campus, and build its own equipment request.
+ * campus, build its own equipment request, and describe its band.
  */
-export const portalActions = ["portal:view", "catalog:read", "request:edit"] as const;
+export const portalActions = ["portal:view", "catalog:read", "request:edit", "band:edit"] as const;
 export type PortalAction = (typeof portalActions)[number];
 
 /** Something that belongs to one guest group. */

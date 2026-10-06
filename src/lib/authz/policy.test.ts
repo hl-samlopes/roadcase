@@ -399,4 +399,14 @@ describe("contract templates", () => {
     expect(can(locationAdmin, "contracts:manage", campus)).toBe(false);
     expect(can(otherCampusAdmin, "contracts:manage", campus)).toBe(false);
   });
+
+  it("go with band positions: campus admins and up, never editors", () => {
+    const campus = { organizationId: ORG, campusId: HLK };
+    const campusAdmin = actor([grant({ level: "ADMIN", scopeType: "CAMPUS", campusId: HLK })]);
+    const campusEditor = actor([grant({ level: "EDITOR", scopeType: "CAMPUS", campusId: HLK })]);
+    const otherCampusAdmin = actor([grant({ level: "ADMIN", scopeType: "CAMPUS", campusId: HNE })]);
+    expect(can(campusAdmin, "bandPositions:manage", campus)).toBe(true);
+    expect(can(campusEditor, "bandPositions:manage", campus)).toBe(false);
+    expect(can(otherCampusAdmin, "bandPositions:manage", campus)).toBe(false);
+  });
 });

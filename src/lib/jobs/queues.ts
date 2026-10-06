@@ -26,6 +26,7 @@ export const emailTemplates = [
   "portal-request",
   "request-sent",
   "portal-decision",
+  "band-sent",
 ] as const;
 
 /**
@@ -87,6 +88,26 @@ export const queues = {
       requestId: z.uuid(),
       /** Which send this is about (ISO time), so each send is notified once. */
       submittedAt: z.iso.datetime(),
+    }),
+  },
+  /** Emails the audio team that a guest group sent or changed its band setup. */
+  "band.notify": {
+    label: "Band setup notification",
+    options: retry,
+    payload: z.object({
+      organizationId: z.uuid(),
+      setupId: z.uuid(),
+      submittedAt: z.iso.datetime(),
+    }),
+  },
+  /** Makes the PDF of one version of a shared input list. */
+  "inputlist.pdf": {
+    label: "Input list PDF",
+    options: retry,
+    payload: z.object({
+      organizationId: z.uuid(),
+      inputListId: z.uuid(),
+      version: z.number().int().positive(),
     }),
   },
   /** Makes the signed contract's PDF, stores it, then queues the emails to both parties. */

@@ -53,3 +53,23 @@ export function isRequestApprover(
     })
   );
 }
+
+/**
+ * Whether someone should be emailed that a group sent its band setup: the
+ * same people as for requests (they run check-outs at the campus), with
+ * their own switch in Preferences.
+ */
+export function isBandRecipient(
+  candidate: Actor & { emailBandSent: boolean },
+  place: { organizationId: string; campusId: string },
+): boolean {
+  return (
+    candidate.isActive &&
+    candidate.organizationId === place.organizationId &&
+    candidate.emailBandSent &&
+    can(candidate, "checkout:manage", {
+      organizationId: place.organizationId,
+      campusId: place.campusId,
+    })
+  );
+}

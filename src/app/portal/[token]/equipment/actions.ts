@@ -2,42 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { portalCan, resolvePortal } from "@/lib/authz";
-import { isThrottled, recordFailure } from "@/lib/auth/throttle";
-import { portalLinkKey, portalWriteLimit } from "@/lib/auth/throttle-policy";
 import { portalCatalog, portalRequest } from "@/lib/data/portal";
 import { db } from "@/lib/db";
 import type { FormState } from "@/lib/forms/state";
 import { enqueue } from "@/lib/jobs/boss";
 import { parseQuantity } from "@/lib/portal/catalog";
+import { portalForChange } from "@/lib/portal/guard";
 import { quantityField } from "@/lib/portal/fields";
 import { guestCanEdit, guestEditableStatuses } from "@/lib/portal/requests";
 import { encryptSecret, secretsConfigured } from "@/lib/secrets";
 
-const LINK_GONE: FormState = {
-  error: "This link no longer works. Ask your staff contact for a new one.",
-};
 const LOCKED: FormState = {
   error:
     "Staff have started reviewing your request, so it can't be changed here. Contact your staff contact.",
 };
-const TOO_MANY: FormState = {
-  error: "That's a lot of changes in a short time. Wait a few minutes, then try again.",
-};
 const noteSchema = z.string().trim().max(2000, "Keep the note under 2,000 characters.");
-
-/** The portal for this token, allowed to edit its request and not paused, or a form error. */
-async function editingPortal(token: string) {
-  const portal = await resolvePortal(token);
-  if (!portal || !portalCan(portal.principal, "request:edit", portal.principal)) {
-    return { error: LINK_GONE };
-  }
-  const keys = [{ key: portalLinkKey(portal.principal.linkId), limit: portalWriteLimit }];
-  if (await isThrottled(keys)) return { error: TOO_MANY };
-  // Every save counts toward the limit, whatever its outcome.
-  await recordFailure(keys);
-  return { portal };
-}
 
 function refresh() {
   revalidatePath("/portal/[token]", "page");
@@ -54,7 +33,7 @@ export async function saveRequestAction(
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const { portal, error } = await editingPortal(token);
+  const { portal, error } = await portalForChange(token, "request:edit");
   if (!portal) return error;
   const { principal, group } = portal;
   const existing = await portalRequest(principal);
@@ -184,7 +163,7 @@ export async function withdrawRequestAction(
   _state: FormState,
   _formData: FormData,
 ): Promise<FormState> {
-  const { portal, error } = await editingPortal(token);
+  const { portal, error } = await portalForChange(token, "request:edit");
   if (!portal) return error;
   const { count } = await db.equipmentRequest.updateMany({
     where: { guestGroupId: portal.principal.guestGroupId, status: "SUBMITTED" },
