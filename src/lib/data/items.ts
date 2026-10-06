@@ -287,3 +287,13 @@ export async function listFilterOptions(actor: Actor, campusId: string | null) {
   ]);
   return { categories, locations, conditions };
 }
+
+/** What stops an item being deleted: any history at all (check-outs, tickets, service logs). */
+export async function itemHistoryCounts(itemId: string) {
+  const [tickets, serviceLogs, checkouts] = await Promise.all([
+    db.serviceTicket.count({ where: { itemId } }),
+    db.serviceLog.count({ where: { itemId } }),
+    db.checkoutLine.count({ where: { itemId } }),
+  ]);
+  return { tickets, serviceLogs, checkouts, any: tickets + serviceLogs + checkouts > 0 };
+}

@@ -122,6 +122,8 @@ export const harborOrganization = {
   mic: { code: "HBR-000001", name: "Return mic" },
   amp: { code: "HBR-000002", name: "Return amp" },
   pa: { code: "HBR-000003", name: "Overdue PA" },
+  /** No history at all, so it can be deleted. */
+  spare: { code: "HBR-000004", name: "Spare cable" },
   /** Out, due back in the future: checked in by the returns test. */
   band: { id: "0190a000-0000-7000-8000-000000000054", number: 1, group: "Harbor youth band" },
   /** Out, due back yesterday (in the organization's time zone): overdue. */

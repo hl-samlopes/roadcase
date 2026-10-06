@@ -8,13 +8,14 @@ import { LocalDateField } from "@/components/local-date-field";
 import { buttonClass, Card, PageHeader, TextAreaField, TextField } from "@/components/ui";
 import { can, requireUser } from "@/lib/authz";
 import { attachmentUrl } from "@/lib/data/attachments";
-import { activeFields, getItem } from "@/lib/data/items";
+import { activeFields, getItem, itemHistoryCounts } from "@/lib/data/items";
 import { acceptedUploadTypes } from "@/lib/files";
 import { formatBytes, formatDate, formatMoney } from "@/lib/format";
 import { formatCustomFieldValue } from "@/lib/items/custom-fields";
 import { serviceTypeSuggestions } from "@/lib/labels";
 import {
   deleteAttachmentAction,
+  deleteItemAction,
   logServiceAction,
   setPrimaryPhotoAction,
   uploadAttachmentAction,
@@ -32,6 +33,8 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
   const editable = can(user, "item:update", item);
   const canReport = can(user, "ticket:submit", item);
   const canLogService = can(user, "serviceLog:manage", item);
+  const canDelete = can(user, "item:delete", item);
+  const history = canDelete ? await itemHistoryCounts(item.id) : null;
   // Closed tickets keep the home they had, so check each one.
   const tickets = item.serviceTickets.filter((ticket) => can(user, "ticket:read", ticket));
   const fields = await activeFields(user.organizationId);
@@ -328,6 +331,43 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
               </div>
             )}
           </Card>
+
+          {history ? (
+            <Card title="Delete item">
+              {history.any ? (
+                <p className="text-muted">
+                  This item has history (
+                  {[
+                    history.checkouts ? "check-outs" : null,
+                    history.tickets ? "tickets" : null,
+                    history.serviceLogs ? "service logs" : null,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                  ), so it can&apos;t be deleted. To take it out of use, edit it and change its
+                  condition, for example to the one your organization uses for retired equipment.
+                </p>
+              ) : (
+                <details>
+                  <summary className="text-bad cursor-pointer font-semibold">
+                    Delete this item…
+                  </summary>
+                  <p className="my-3">
+                    {item.code} has no check-outs, tickets or service logs, so it can be deleted
+                    with its photos and documents. This can&apos;t be undone, and the code
+                    won&apos;t be reused.
+                  </p>
+                  <ActionForm
+                    action={deleteItemAction.bind(null, item.id)}
+                    submitLabel={`Delete ${item.code} permanently`}
+                    pendingLabel="Deleting…"
+                    variant="danger"
+                    className={inline}
+                  />
+                </details>
+              )}
+            </Card>
+          ) : null}
         </div>
       </div>
     </div>

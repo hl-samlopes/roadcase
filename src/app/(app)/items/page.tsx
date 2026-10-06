@@ -42,7 +42,9 @@ const columns: { key: SortKey | null; label: string; wide?: boolean }[] = [
 
 export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
   const user = await requireUser();
-  const params = parseListParams(await searchParams);
+  const query = await searchParams;
+  const params = parseListParams(query);
+  const deleted = typeof query.deleted === "string" ? query.deleted.slice(0, 250) : null;
   const { active } = await getCampusContext(user);
   const [{ items, total, page, pageCount }, filters, homes, canSetUpPlaces] = await Promise.all([
     listItems(user, params, active?.id ?? null),
@@ -64,6 +66,11 @@ export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
 
   return (
     <>
+      {deleted ? (
+        <p role="status" className="mb-3">
+          Done: deleted {deleted}.
+        </p>
+      ) : null}
       <PageHeader title="Inventory">
         <div className="flex flex-wrap items-center gap-2">
           {homes.length > 0 ? (

@@ -628,7 +628,7 @@ async function loadHarborOrganization(prisma: PrismaClient) {
       checkoutSequence: 2,
       branding: { create: {} },
       campuses: {
-        create: { id: o.campus.id, code: o.campus.code, name: o.campus.name, itemSequence: 3 },
+        create: { id: o.campus.id, code: o.campus.code, name: o.campus.name, itemSequence: 4 },
       },
       categories: { create: { name: "Audio" } },
       itemConditions: {
@@ -678,6 +678,7 @@ async function loadHarborOrganization(prisma: PrismaClient) {
       },
     });
   const [mic, amp, pa] = [await item(o.mic), await item(o.amp), await item(o.pa)];
+  await item(o.spare);
 
   // "Yesterday" where the organization is, so the worker's first scan sees it overdue.
   const today = dateInZone(new Date(), appTimeZone());

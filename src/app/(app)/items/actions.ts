@@ -5,7 +5,13 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { Prisma } from "@/generated/prisma/client.ts";
 import { can, requireUser, type CurrentUser } from "@/lib/authz";
-import { activeFields, allowedHomes, getItem, homeValue } from "@/lib/data/items";
+import {
+  activeFields,
+  allowedHomes,
+  getItem,
+  homeValue,
+  itemHistoryCounts,
+} from "@/lib/data/items";
 import { db } from "@/lib/db";
 import { formObject, invalid, type FormState } from "@/lib/forms/state";
 import { parseCustomFieldInput } from "@/lib/items/custom-fields";
@@ -378,4 +384,32 @@ export async function logServiceAction(
   revalidatePath(`/items/${item.id}`);
   revalidatePath("/service-log");
   return { success: `Logged ${parsed.data.serviceType}.` };
+}
+
+/**
+ * Deletes an item that has no history (never on a check-out, no tickets, no
+ * service logs), with its photos and documents. Anything with history stays:
+ * staff retire it by changing its condition instead. Its code isn't reused.
+ */
+export async function deleteItemAction(
+  itemId: string,
+  _state: FormState,
+  _formData: FormData,
+): Promise<FormState> {
+  const actor = await requireUser();
+  const item = await getItem(actor, itemId);
+  if (!item || !can(actor, "item:delete", item)) return NOT_ALLOWED;
+  if ((await itemHistoryCounts(item.id)).any) {
+    return {
+      error: "This item has history, so it can't be deleted. Change its condition instead.",
+    };
+  }
+  const files = await db.attachment.findMany({
+    where: { itemId: item.id },
+    select: { storageKey: true },
+  });
+  await db.item.delete({ where: { id: item.id } });
+  await Promise.all(files.map((file) => deleteObject(file.storageKey).catch(() => {})));
+  revalidatePath("/items");
+  redirect(`/items?deleted=${encodeURIComponent(`${item.code} ${item.name}`)}`);
 }
