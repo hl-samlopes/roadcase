@@ -22,6 +22,10 @@ delivered to real inboxes. Settings > Notifications sends a test email, lists ba
 jobs that failed, and connects Slack channels for ticket alerts. Saving a Slack webhook
 needs `SECRETS_ENCRYPTION_KEY` in `.env` (`openssl rand -base64 32`).
 
+Check-outs are signed on the check-out's signing screen (made for a tablet). Once both
+parties have signed, the worker makes the contract PDF and emails it to both; with
+`npm run worker` running, it shows up in Mailpit with the PDF attached.
+
 The seed is safe to rerun: it only creates rows that are missing and never changes the
 admin password after the first run.
 

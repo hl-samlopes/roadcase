@@ -45,6 +45,8 @@ Rules: text contrast at least 4.5:1, status never by color alone (always a text 
 - Never log passwords, tokens or signature images.
 - Secrets kept in the database (Slack webhook URLs, later MaintainX keys) are encrypted with `src/lib/secrets.ts`, never shown again in full and never logged.
 - Notifications are queued inside the transaction that records the change (`queueTicketNotice`), and the worker checks permissions again with `can()` when it sends.
+- Signed contracts never change: the filled document, its text and SHA-256 are frozen when prepared, and database triggers block edits to contract content, signatures and saved template versions. Signature images are admin-only and never logged.
+- Worker code runs in plain Node (no JSX, no `next/*` imports): import `@/lib/authz/policy` rather than `@/lib/authz`, and build PDFs with `createElement`.
 - Ask before adding a new dependency that is not in the stack above.
 
 ## Commands
