@@ -45,6 +45,12 @@ const sections = [
     organizationAdminOnly: false,
   },
   {
+    href: "/settings/band-positions",
+    title: "Band positions",
+    description: "The band positions guests choose from, and the inputs each one needs.",
+    organizationAdminOnly: false,
+  },
+  {
     href: "/settings/notifications",
     title: "Notifications",
     description: "Slack channels for ticket alerts, test email, and background jobs that failed.",
