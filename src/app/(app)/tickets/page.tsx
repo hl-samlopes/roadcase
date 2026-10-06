@@ -6,13 +6,12 @@ import { requireUser } from "@/lib/authz";
 import { getCampusContext } from "@/lib/data/campuses";
 import {
   activeDepartments,
-  assigneeLabel,
   listTickets,
   PAGE_SIZE,
   parseTicketListParams,
   type TicketListParams,
 } from "@/lib/data/tickets";
-import { ticketStatusLabels } from "@/lib/labels";
+import { assigneeLabel, ticketStatusLabels } from "@/lib/labels";
 
 export const metadata: Metadata = { title: "Service tickets" };
 

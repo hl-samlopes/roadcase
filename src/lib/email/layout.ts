@@ -25,6 +25,8 @@ export interface EmailContent {
   heading: string;
   paragraphs: string[];
   action?: { label: string; url: string };
+  /** Why the person got this email; shown small, under the message. */
+  footer?: string;
 }
 
 export function escapeHtml(value: string): string {
@@ -83,7 +85,7 @@ export function renderBrandedEmail(brand: EmailBrand, content: EmailContent) {
 <h1 style="margin:0 0 16px;font-family:${heading};font-size:22px;line-height:1.3;color:${colors.text}">${escapeHtml(content.heading)}</h1>
 ${paragraphs}${button}
 </td></tr>
-<tr><td style="padding:16px 4px 0;font-family:${body};font-size:12px;line-height:1.5;color:${colors.muted}">Sent by ${name}.</td></tr>
+<tr><td style="padding:16px 4px 0;font-family:${body};font-size:12px;line-height:1.5;color:${colors.muted}">${content.footer ? `${escapeHtml(content.footer)} ` : ""}Sent by ${name}.</td></tr>
 </table>
 </td></tr></table>
 </body>
@@ -96,6 +98,7 @@ ${paragraphs}${button}
     "",
     ...content.paragraphs.flatMap((p) => [p, ""]),
     ...(content.action && actionUrl ? [`${content.action.label}: ${actionUrl}`, ""] : []),
+    ...(content.footer ? [content.footer] : []),
     `Sent by ${brand.name}.`,
   ].join("\n");
 

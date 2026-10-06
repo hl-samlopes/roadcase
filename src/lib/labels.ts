@@ -43,3 +43,24 @@ export const serviceTypeSuggestions = [
   "Replacement part",
   "Calibration",
 ];
+
+/** A short description of who a ticket is assigned to, or null if nobody yet. */
+export function assigneeLabel(ticket: {
+  assigneeType: string | null;
+  vendorName: string | null;
+  assigneeUser: { displayName: string } | null;
+  assigneeDepartment: { name: string } | null;
+}): string | null {
+  switch (ticket.assigneeType) {
+    case "USER":
+      return ticket.assigneeUser?.displayName ?? "A former user";
+    case "DEPARTMENT":
+      return ticket.assigneeDepartment
+        ? `${ticket.assigneeDepartment.name} department`
+        : "A department";
+    case "VENDOR":
+      return ticket.vendorName ? `${ticket.vendorName} (outside company)` : "An outside company";
+    default:
+      return null;
+  }
+}

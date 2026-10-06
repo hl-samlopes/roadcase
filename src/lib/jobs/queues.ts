@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ticketNotices } from "@/lib/notifications/recipients";
 
 /**
  * Background job queues: names, retry policy and payloads. The app sends to
@@ -16,7 +17,17 @@ const retry = {
   expireInSeconds: 300,
 } as const;
 
-export const emailTemplates = ["test"] as const;
+export const emailTemplates = ["test", "ticket"] as const;
+
+/**
+ * Who an email goes to. A user id is looked up when the email is sent, so a
+ * changed address or a deactivated account is respected; a plain address is
+ * for people without an account (guests, from Phase 2 step 4).
+ */
+const recipient = z.union([
+  z.object({ userId: z.uuid() }),
+  z.object({ email: z.email(), name: z.string().max(200).optional() }),
+]);
 
 export const queues = {
   "email.send": {
@@ -26,10 +37,37 @@ export const queues = {
       organizationId: z.uuid(),
       /** Same for every attempt, so a retry can tell the email already went out. */
       idempotencyKey: z.string().min(1).max(200),
-      to: z.object({ email: z.email(), name: z.string().max(200).optional() }),
+      recipient,
       template: z.enum(emailTemplates),
       data: z.record(z.string(), z.string()).default({}),
     }),
+  },
+  /** Works out who hears about a ticket event, then queues their emails and Slack posts. */
+  "ticket.notify": {
+    label: "Ticket notification",
+    options: retry,
+    payload: z.object({
+      organizationId: z.uuid(),
+      ticketId: z.uuid(),
+      eventId: z.uuid(),
+      notice: z.enum(ticketNotices),
+      actorId: z.uuid().nullable(),
+    }),
+  },
+  "slack.post": {
+    label: "Post to Slack",
+    options: retry,
+    payload: z.discriminatedUnion("kind", [
+      z.object({ kind: z.literal("test"), organizationId: z.uuid(), webhookId: z.uuid() }),
+      z.object({
+        kind: z.literal("ticket"),
+        organizationId: z.uuid(),
+        webhookId: z.uuid(),
+        ticketId: z.uuid(),
+        eventId: z.uuid(),
+        notice: z.enum(ticketNotices),
+      }),
+    ]),
   },
   /** Fails its first attempts on purpose; only registered when JOBS_TEST_QUEUE=1 (e2e tests). */
   "test.flaky": {

@@ -23,6 +23,7 @@ import {
 import { db } from "@/lib/db";
 import { formObject, invalid, type FormState } from "@/lib/forms/state";
 import { ticketStatusLabels } from "@/lib/labels";
+import { queueTicketNotice } from "@/lib/notifications/queue";
 import { deleteObject } from "@/lib/storage";
 import { readUpload, storeUpload } from "@/lib/uploads";
 
@@ -151,7 +152,7 @@ export async function commentAction(
             select: { id: true },
           })
         : null;
-      await tx.ticketEvent.create({
+      const event = await tx.ticketEvent.create({
         data: {
           ticketId: ticket.id,
           actorId: actor.id,
@@ -159,8 +160,19 @@ export async function commentAction(
           body: body.data || null,
           attachmentId: attachment?.id,
         },
+        select: { id: true },
       });
       await tx.serviceTicket.update({ where: { id: ticket.id }, data: { updatedAt: new Date() } });
+      // A file on its own isn't emailed about; attachment contents never are.
+      if (body.data) {
+        await queueTicketNotice(tx, {
+          organizationId: ticket.organizationId,
+          ticketId: ticket.id,
+          eventId: event.id,
+          notice: "comment",
+          actorId: actor.id,
+        });
+      }
     }),
   );
   refresh(ticket);
@@ -310,12 +322,12 @@ export async function assignAction(
   }
 
   const nextStatus = ticket.status === "OPEN" ? "ASSIGNED" : ticket.status;
-  await db.$transaction([
-    db.serviceTicket.update({
+  await db.$transaction(async (tx) => {
+    await tx.serviceTicket.update({
       where: { id: ticket.id },
       data: { ...assignment, status: nextStatus },
-    }),
-    db.ticketEvent.create({
+    });
+    const event = await tx.ticketEvent.create({
       data: {
         ticketId: ticket.id,
         actorId: actor.id,
@@ -325,8 +337,16 @@ export async function assignAction(
         toStatus: nextStatus,
         data: { assignee: label },
       },
-    }),
-  ]);
+      select: { id: true },
+    });
+    await queueTicketNotice(tx, {
+      organizationId: ticket.organizationId,
+      ticketId: ticket.id,
+      eventId: event.id,
+      notice: "assigned",
+      actorId: actor.id,
+    });
+  });
   refresh(ticket);
   return { success: `Assigned to ${label}.` };
 }
@@ -423,7 +443,7 @@ export async function completeTicketAction(
           data: { ...stored, serviceLogId: log.id, uploadedById: actor.id },
         });
       }
-      await tx.ticketEvent.create({
+      const event = await tx.ticketEvent.create({
         data: {
           ticketId: ticket.id,
           actorId: actor.id,
@@ -432,6 +452,14 @@ export async function completeTicketAction(
           toStatus: "COMPLETED",
           body: `Completed: ${input.serviceType}${input.cost ? `, $${input.cost}` : ""}. Service log recorded.`,
         },
+        select: { id: true },
+      });
+      await queueTicketNotice(tx, {
+        organizationId: ticket.organizationId,
+        ticketId: ticket.id,
+        eventId: event.id,
+        notice: "completed",
+        actorId: actor.id,
       });
       if (conditionId && conditionId !== ticket.item.conditionId) {
         await tx.item.update({

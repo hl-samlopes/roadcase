@@ -4,6 +4,7 @@ import type { Prisma } from "@/generated/prisma/client.ts";
 import { TicketStatus } from "@/generated/prisma/enums.ts";
 import { can, scopeWhere, type Actor } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { queueTicketNotice } from "@/lib/notifications/queue";
 
 export const PAGE_SIZE = 50;
 
@@ -27,7 +28,8 @@ export interface TicketItem {
 
 /**
  * Opens a ticket for an item with the organization's next number and a
- * "created" timeline entry. Run inside a transaction with related writes.
+ * "created" timeline entry, and queues its notifications. Run inside a
+ * transaction with related writes.
  */
 export async function createTicket(
   tx: Tx,
@@ -38,7 +40,7 @@ export async function createTicket(
     data: { ticketSequence: { increment: 1 } },
     select: { ticketSequence: true },
   });
-  return tx.serviceTicket.create({
+  const ticket = await tx.serviceTicket.create({
     data: {
       organizationId: input.item.organizationId,
       campusId: input.item.campusId,
@@ -51,8 +53,16 @@ export async function createTicket(
       reporterId: input.reporterId,
       events: { create: { type: "CREATED", actorId: input.reporterId, toStatus: "OPEN" } },
     },
-    select: { id: true, number: true },
+    select: { id: true, number: true, events: { select: { id: true } } },
   });
+  await queueTicketNotice(tx, {
+    organizationId: input.item.organizationId,
+    ticketId: ticket.id,
+    eventId: ticket.events[0].id,
+    notice: "opened",
+    actorId: input.reporterId,
+  });
+  return { id: ticket.id, number: ticket.number };
 }
 
 /** The item's open ticket, if any (used so repeated flags don't pile up tickets). */
@@ -239,27 +249,6 @@ export function activeDepartments(organizationId: string) {
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
-}
-
-/** A short description of who a ticket is assigned to, or null if nobody yet. */
-export function assigneeLabel(ticket: {
-  assigneeType: string | null;
-  vendorName: string | null;
-  assigneeUser: { displayName: string } | null;
-  assigneeDepartment: { name: string } | null;
-}): string | null {
-  switch (ticket.assigneeType) {
-    case "USER":
-      return ticket.assigneeUser?.displayName ?? "A former user";
-    case "DEPARTMENT":
-      return ticket.assigneeDepartment
-        ? `${ticket.assigneeDepartment.name} department`
-        : "A department";
-    case "VENDOR":
-      return ticket.vendorName ? `${ticket.vendorName} (outside company)` : "An outside company";
-    default:
-      return null;
-  }
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;

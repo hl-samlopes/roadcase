@@ -1,5 +1,6 @@
 import "server-only";
-import { PgBoss } from "pg-boss";
+import { createHash } from "node:crypto";
+import { fromPrisma, PgBoss, type PrismaTransactionLike } from "pg-boss";
 import { safeErrorMessage } from "./errors";
 import { queues, type QueueName, type QueuePayload } from "./queues";
 
@@ -51,11 +52,33 @@ function sender(): Promise<PgBoss> {
   return globalForJobs.roadcaseBoss;
 }
 
-/** Queues a job for the worker. The payload is validated before it is stored. */
-export async function enqueue<Q extends QueueName>(queue: Q, payload: QueuePayload<Q>) {
+/** A UUID that is always the same for the same queue and key. */
+export function jobIdFor(queue: string, key: string): string {
+  const hex = createHash("sha256").update(`${queue}\0${key}`).digest("hex");
+  // Shaped as an RFC 9562 version 8 (custom) UUID.
+  const variant = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-8${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+
+/**
+ * Queues a job for the worker. The payload is validated before it is stored.
+ *
+ * - `tx`: queue it inside a Prisma interactive transaction, so the job exists
+ *   only if the transaction commits.
+ * - `key`: a job with the same queue and key is queued only once, so a retried
+ *   fan-out job doesn't queue duplicates. Returns null when it already exists.
+ */
+export async function enqueue<Q extends QueueName>(
+  queue: Q,
+  payload: QueuePayload<Q>,
+  options: { tx?: PrismaTransactionLike; key?: string } = {},
+): Promise<string | null> {
   const data = queues[queue].payload.parse(payload);
   const boss = await sender();
-  const id = await boss.send(queue, data);
-  if (!id) throw new Error(`Job was not queued on ${queue}`);
+  const id = await boss.send(queue, data, {
+    ...(options.key ? { id: jobIdFor(queue, options.key) } : {}),
+    ...(options.tx ? { db: fromPrisma(options.tx) } : {}),
+  });
+  if (!id && !options.key) throw new Error(`Job was not queued on ${queue}`);
   return id;
 }

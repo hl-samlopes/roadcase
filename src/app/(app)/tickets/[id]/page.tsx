@@ -10,14 +10,13 @@ import { attachmentUrl } from "@/lib/data/attachments";
 import {
   activeDepartments,
   assignableUsers,
-  assigneeLabel,
   getTicket,
   openTicketStatuses,
   type TicketDetail,
 } from "@/lib/data/tickets";
 import { db } from "@/lib/db";
 import { acceptedUploadTypes } from "@/lib/files";
-import { serviceTypeSuggestions, ticketStatusLabels } from "@/lib/labels";
+import { assigneeLabel, serviceTypeSuggestions, ticketStatusLabels } from "@/lib/labels";
 import {
   assignAction,
   cancelTicketAction,

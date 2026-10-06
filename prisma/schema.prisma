@@ -129,6 +129,7 @@ model Organization {
   rfidTags         RfidTag[]
   jobFailures      JobFailure[]
   sentEmails       SentEmail[]
+  slackWebhooks    SlackWebhook[]
 }
 
 model Campus {
@@ -150,6 +151,7 @@ model Campus {
   serviceLogs      ServiceLog[]
   permissionGrants PermissionGrant[]
   userPreferences  UserPreference[]
+  slackWebhooks    SlackWebhook[]
 
   @@unique([organizationId, code])
   @@unique([id, organizationId])
@@ -194,6 +196,7 @@ model Department {
   assignedTickets  ServiceTicket[]      @relation("TicketAssigneeDepartment")
   serviceLogs      ServiceLog[]
   permissionGrants PermissionGrant[]
+  slackWebhooks    SlackWebhook[]
 
   @@unique([organizationId, name])
 }
@@ -249,6 +252,7 @@ model User {
   ticketEvents       TicketEvent[]
   serviceLogsCreated ServiceLog[]
   brandingUpdates    OrganizationBranding[]
+  slackWebhooksAdded SlackWebhook[]
 
   @@unique([organizationId, username])
   @@unique([organizationId, email])
@@ -622,7 +626,13 @@ model UserPreference {
   textScale      Int?
   /// Campus selected in the campus switcher.
   activeCampusId String?      @db.Uuid
-  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+
+  /// Ticket emails, each on unless the user turns it off in Preferences.
+  emailTicketOpened    Boolean  @default(true)
+  emailTicketAssigned  Boolean  @default(true)
+  emailTicketCompleted Boolean  @default(true)
+  emailTicketComment   Boolean  @default(true)
+  updatedAt            DateTime @updatedAt @db.Timestamptz(3)
 
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   activeCampus Campus? @relation(fields: [activeCampusId], references: [id], onDelete: SetNull)
@@ -682,4 +692,29 @@ model SentEmail {
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, sentAt])
+}
+
+/// A Slack incoming webhook that receives ticket alerts for one campus or one
+/// department (a CHECK constraint enforces exactly one). The URL is a secret:
+/// stored encrypted (src/lib/secrets.ts), never shown again in full, never logged.
+model SlackWebhook {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  campusId       String?  @db.Uuid
+  departmentId   String?  @db.Uuid
+  /// What admins call it, usually the channel name, e.g. "#hne-production".
+  label          String
+  encryptedUrl   String
+  /// The last few characters of the URL, so admins can tell webhooks apart.
+  urlHint        String
+  createdById    String?  @db.Uuid
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  campus       Campus?      @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
 }

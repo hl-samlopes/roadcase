@@ -34,8 +34,8 @@ const sections = [
   {
     href: "/settings/notifications",
     title: "Notifications",
-    description: "Test email delivery and see background jobs that failed.",
-    organizationAdminOnly: true,
+    description: "Slack channels for ticket alerts, test email, and background jobs that failed.",
+    organizationAdminOnly: false,
   },
   {
     href: "/settings/appearance",

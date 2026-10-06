@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultLightTokens } from "@/lib/theme/tokens";
 import { renderBrandedEmail, type EmailBrand } from "./layout";
-import { renderTemplate } from "./templates";
+import { testEmailContent } from "./templates";
 
 const brand: EmailBrand = {
   name: "Northwind <Production>",
@@ -57,7 +57,7 @@ describe("renderBrandedEmail", () => {
   });
 
   it("always has a plain-text version with the same content", () => {
-    const content = renderTemplate("test", { requestedBy: "Pat" }, brand.name);
+    const content = testEmailContent({ requestedBy: "Pat" }, brand.name);
     const { text } = renderBrandedEmail(brand, {
       ...content,
       action: { label: "Open Roadcase", url: "https://app.example.com/" },

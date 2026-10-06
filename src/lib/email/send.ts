@@ -1,12 +1,17 @@
 import "server-only";
+import { z } from "zod";
 import type { BodyFont, HeadingFont } from "@/generated/prisma/enums.ts";
+import { appUrl } from "@/lib/app-url";
 import { displayName, getBranding, logoUrls } from "@/lib/branding";
 import { db } from "@/lib/db";
 import type { ParsedPayload } from "@/lib/jobs/queues";
+import { ticketEmailContent } from "@/lib/notifications/content";
+import { loadCandidate, loadNoticeEvent, loadNoticeTicket } from "@/lib/notifications/data";
+import { isTicketRecipient, ticketNotices } from "@/lib/notifications/recipients";
 import { resolveTheme } from "@/lib/theme/resolve";
-import { renderBrandedEmail, type EmailBrand } from "./layout";
-import { emailProviderFromEnv } from "./provider";
-import { renderTemplate } from "./templates";
+import { renderBrandedEmail, type EmailBrand, type EmailContent } from "./layout";
+import { emailProviderFromEnv, type EmailAddress } from "./provider";
+import { testEmailContent } from "./templates";
 
 const fontNames: Record<HeadingFont | BodyFont, string> = {
   INTER: "Inter",
@@ -36,6 +41,58 @@ function fromAddress() {
   return "no-reply@roadcase.localhost";
 }
 
+const ticketData = z.object({
+  ticketId: z.uuid(),
+  eventId: z.uuid(),
+  notice: z.enum(ticketNotices),
+});
+
+type Composed = { to: EmailAddress; content: EmailContent } | { skip: string };
+
+/**
+ * Works out the address and content at send time. Ticket emails are checked
+ * again here: a recipient who was deactivated, lost access or opted out since
+ * the email was queued is skipped.
+ */
+async function compose(
+  payload: ParsedPayload<"email.send">,
+  organizationName: string,
+): Promise<Composed> {
+  const { organizationId, recipient } = payload;
+  const candidate =
+    "userId" in recipient ? await loadCandidate(organizationId, recipient.userId) : null;
+  if ("userId" in recipient && !candidate?.isActive) return { skip: "recipient is inactive" };
+  const to: EmailAddress = candidate
+    ? { email: candidate.email, name: candidate.displayName }
+    : (recipient as EmailAddress);
+
+  switch (payload.template) {
+    case "test":
+      return { to, content: testEmailContent(payload.data, organizationName) };
+    case "ticket": {
+      const data = ticketData.safeParse(payload.data);
+      if (!data.success || !candidate) return { skip: "not a ticket email for an account" };
+      const [ticket, event] = await Promise.all([
+        loadNoticeTicket(organizationId, data.data.ticketId),
+        loadNoticeEvent(data.data.ticketId, data.data.eventId),
+      ]);
+      if (!ticket || !event) return { skip: "ticket or event no longer exists" };
+      if (!isTicketRecipient(data.data.notice, ticket, event.actorId, candidate)) {
+        return { skip: "recipient can no longer see the ticket or opted out" };
+      }
+      return {
+        to,
+        content: ticketEmailContent(
+          data.data.notice,
+          ticket,
+          event,
+          appUrl(`/tickets/${ticket.id}`),
+        ),
+      };
+    }
+  }
+}
+
 /**
  * Renders and sends one email in the organization's branding. Runs in the
  * worker from the email.send job; an email whose key was already sent is
@@ -46,15 +103,17 @@ export async function sendEmail(payload: ParsedPayload<"email.send">) {
     where: { idempotencyKey: payload.idempotencyKey },
     select: { id: true },
   });
-  if (sent) return { skipped: true as const };
+  if (sent) return { skipped: "already sent" };
 
   const brand = await emailBrand(payload.organizationId);
-  const content = renderTemplate(payload.template, payload.data, brand.name);
-  const { html, text } = renderBrandedEmail(brand, content);
+  const composed = await compose(payload, brand.name);
+  if ("skip" in composed) return { skipped: composed.skip };
+
+  const { html, text } = renderBrandedEmail(brand, composed.content);
   const result = await emailProviderFromEnv().send({
     from: { email: fromAddress(), name: brand.name },
-    to: [payload.to],
-    subject: content.subject,
+    to: [composed.to],
+    subject: composed.content.subject,
     text,
     html,
   });
@@ -63,10 +122,10 @@ export async function sendEmail(payload: ParsedPayload<"email.send">) {
     data: {
       organizationId: payload.organizationId,
       idempotencyKey: payload.idempotencyKey,
-      toAddress: payload.to.email.toLowerCase(),
-      subject: content.subject,
+      toAddress: composed.to.email.toLowerCase(),
+      subject: composed.content.subject,
       providerMessageId: result.id,
     },
   });
-  return { skipped: false as const };
+  return { skipped: null };
 }
