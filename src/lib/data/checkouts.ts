@@ -12,6 +12,7 @@ import {
   type Actor,
 } from "@/lib/authz/policy";
 import { availability, refusalMessage, type Refusal } from "@/lib/checkouts/availability";
+import { appTimeZone, dateInZone } from "@/lib/checkouts/overdue";
 import { db } from "@/lib/db";
 import { isUniqueViolation } from "@/lib/forms/prisma-errors";
 
@@ -43,7 +44,7 @@ export async function checkoutCampuses(actor: Actor, action: "checkout:read" | "
 }
 
 export const checkoutListParamsSchema = z.object({
-  status: z.enum(["active", "all", "closed"]).optional().catch(undefined),
+  status: z.enum(["active", "overdue", "all", "closed"]).optional().catch(undefined),
 });
 
 export async function listCheckouts(
@@ -62,9 +63,14 @@ export async function listCheckouts(
       campusId: { in: campusIds },
       ...(status === "active"
         ? { status: { in: activeCheckoutStatuses } }
-        : status === "closed"
-          ? { status: { notIn: activeCheckoutStatuses } }
-          : {}),
+        : status === "overdue"
+          ? {
+              status: { in: ["OUT", "PARTIALLY_RETURNED"] },
+              dateDue: { lt: new Date(`${dateInZone(new Date(), appTimeZone())}T00:00:00Z`) },
+            }
+          : status === "closed"
+            ? { status: { notIn: activeCheckoutStatuses } }
+            : {}),
     },
     orderBy: [{ dateOut: "desc" }, { number: "desc" }],
     take: 200,
@@ -104,11 +110,15 @@ const checkoutDetailSelect = {
     select: {
       id: true,
       fee: true,
+      returnedAt: true,
+      returnNotes: true,
+      returnCondition: { select: { label: true } },
       item: {
         select: {
           id: true,
           code: true,
           name: true,
+          conditionId: true,
           condition: { select: { label: true } },
         },
       },

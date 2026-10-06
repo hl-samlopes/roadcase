@@ -5,12 +5,14 @@ import { buttonClass, PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/authz";
 import { getCampusContext } from "@/lib/data/campuses";
 import { checkoutCampuses, checkoutListParamsSchema, listCheckouts } from "@/lib/data/checkouts";
+import { appTimeZone, dateInZone, daysOverdue } from "@/lib/checkouts/overdue";
 import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Check-outs" };
 
 const views = [
   { value: "active", label: "Active" },
+  { value: "overdue", label: "Overdue" },
   { value: "closed", label: "Returned or cancelled" },
   { value: "all", label: "All" },
 ] as const;
@@ -20,6 +22,7 @@ export default async function CheckoutsPage({ searchParams }: PageProps<"/checko
   const params = checkoutListParamsSchema.parse(await searchParams);
   const view = params.status ?? "active";
   const { active } = await getCampusContext(user);
+  const today = dateInZone(new Date(), appTimeZone());
   const [checkouts, manageable] = await Promise.all([
     listCheckouts(user, params, active?.id ?? null),
     checkoutCampuses(user, "checkout:manage"),
@@ -52,7 +55,9 @@ export default async function CheckoutsPage({ searchParams }: PageProps<"/checko
         {checkouts.length === 0
           ? view === "active"
             ? "No active check-outs."
-            : "No check-outs here."
+            : view === "overdue"
+              ? "Nothing is overdue."
+              : "No check-outs here."
           : `${checkouts.length} check-out${checkouts.length === 1 ? "" : "s"} · Showing ${active ? `${active.name} (${active.code})` : "all campuses"}`}
       </p>
 
@@ -86,6 +91,11 @@ export default async function CheckoutsPage({ searchParams }: PageProps<"/checko
                   </td>
                   <td className="p-2">
                     <CheckoutStatusBadge status={checkout.status} />
+                    {daysOverdue(checkout, today) > 0 ? (
+                      <span className="border-bad text-bad rounded-theme ml-1 inline-block border px-1.5 font-semibold whitespace-nowrap">
+                        Overdue
+                      </span>
+                    ) : null}
                   </td>
                   <td className="p-2 whitespace-nowrap">{formatDate(checkout.dateOut)}</td>
                   <td className="p-2 whitespace-nowrap">{formatDate(checkout.dateDue)}</td>

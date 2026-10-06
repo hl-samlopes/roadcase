@@ -33,7 +33,14 @@ export interface TicketItem {
  */
 export async function createTicket(
   tx: Tx,
-  input: { item: TicketItem; title: string; description: string | null; reporterId: string },
+  input: {
+    item: TicketItem;
+    title: string;
+    description: string | null;
+    reporterId: string;
+    /** Set when the item came back damaged from this check-out. */
+    checkoutId?: string | null;
+  },
 ) {
   const organization = await tx.organization.update({
     where: { id: input.item.organizationId },
@@ -51,6 +58,7 @@ export async function createTicket(
       title: input.title,
       description: input.description,
       reporterId: input.reporterId,
+      checkoutId: input.checkoutId ?? null,
       events: { create: { type: "CREATED", actorId: input.reporterId, toStatus: "OPEN" } },
     },
     select: { id: true, number: true, events: { select: { id: true } } },
@@ -187,6 +195,7 @@ const ticketDetailSelect = {
   location: { select: { name: true } },
   department: { select: { name: true } },
   reporter: { select: { displayName: true } },
+  checkout: { select: { id: true, number: true, groupName: true, campusId: true } },
   assigneeUser: { select: { displayName: true } },
   assigneeDepartment: { select: { name: true } },
   events: {

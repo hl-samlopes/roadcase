@@ -5,7 +5,9 @@ import { ActionForm } from "@/components/action-form";
 import { CheckoutStatusBadge } from "@/components/status-badge";
 import { Card, PageHeader, TextField } from "@/components/ui";
 import { can, canManageCheckout, checkoutScope, requireUser } from "@/lib/authz";
+import { appTimeZone, dateInZone, daysOverdue } from "@/lib/checkouts/overdue";
 import { activeContract } from "@/lib/data/contract-records";
+import { checkoutHistory } from "@/lib/data/checkout-history";
 import { latestTemplateVersion } from "@/lib/data/contracts";
 import {
   feeTotalCents,
@@ -13,7 +15,9 @@ import {
   searchItemsForCheckout,
   staffOptions,
 } from "@/lib/data/checkouts";
+import { db } from "@/lib/db";
 import { formatDate, formatMoney } from "@/lib/format";
+import { ticketStatusLabels } from "@/lib/labels";
 import {
   addItemByIdAction,
   addItemsAction,
@@ -23,11 +27,17 @@ import {
   updateCheckoutAction,
 } from "../actions";
 import { CheckoutDetailsFields, detailFieldLabels } from "../details-fields";
+import { checkInAction } from "../return-actions";
+import { CheckInFields } from "./check-in-fields";
 import { ContractPanel } from "./contract-panel";
 
 export const metadata: Metadata = { title: "Check-out" };
 
 const inline = "flex flex-col items-start gap-1";
+
+function formatTime(date: Date, timeZone: string) {
+  return date.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone });
+}
 
 export default async function CheckoutPage({ params, searchParams }: PageProps<"/checkouts/[id]">) {
   const user = await requireUser();
@@ -40,12 +50,43 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
   const editable = checkout.status === "DRAFT" && canManage;
   const cancellable =
     canManage && (checkout.status === "DRAFT" || checkout.status === "AWAITING_SIGNATURES");
-  const [staff, results, contract, template] = await Promise.all([
-    editable ? staffOptions(checkout.organizationId, checkout.campusId) : [],
-    editable && q ? searchItemsForCheckout(user, checkout, q) : [],
-    activeContract(checkout.organizationId, checkout.id),
-    editable ? latestTemplateVersion(checkout.organizationId, checkout.campusId) : null,
-  ]);
+  const isOut = checkout.status === "OUT" || checkout.status === "PARTIALLY_RETURNED";
+  const checkingIn = canManage && isOut;
+  const [staff, results, contract, template, conditions, history, returnTickets] =
+    await Promise.all([
+      editable ? staffOptions(checkout.organizationId, checkout.campusId) : [],
+      editable && q ? searchItemsForCheckout(user, checkout, q) : [],
+      activeContract(checkout.organizationId, checkout.id),
+      editable ? latestTemplateVersion(checkout.organizationId, checkout.campusId) : null,
+      checkingIn
+        ? db.itemCondition.findMany({
+            where: { organizationId: checkout.organizationId, archivedAt: null },
+            orderBy: [{ position: "asc" }, { label: "asc" }],
+            select: { id: true, label: true, startsRepairTicket: true },
+          })
+        : [],
+      checkoutHistory(checkout.organizationId, checkout.id),
+      db.serviceTicket.findMany({
+        where: { checkoutId: checkout.id },
+        orderBy: { number: "asc" },
+        select: {
+          id: true,
+          number: true,
+          title: true,
+          status: true,
+          organizationId: true,
+          campusId: true,
+          locationId: true,
+          departmentId: true,
+          item: { select: { code: true } },
+        },
+      }),
+    ]);
+  const visibleTickets = returnTickets.filter((ticket) => can(user, "ticket:read", ticket));
+  const timeZone = appTimeZone();
+  const overdueDays = daysOverdue(checkout, dateInZone(new Date(), timeZone));
+  const outstanding = checkout.lines.filter((line) => !line.returnedAt);
+  const showReturns = isOut || checkout.status === "RETURNED";
   const totalCents = feeTotalCents(checkout.lines);
   const lineCount = checkout.lines.length;
 
@@ -59,6 +100,13 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
       <PageHeader title={`Check-out #${checkout.number}: ${checkout.groupName}`}>
         <CheckoutStatusBadge status={checkout.status} />
       </PageHeader>
+      {overdueDays > 0 ? (
+        <p role="status" className="border-bad rounded-theme border p-2 font-semibold">
+          Overdue: due back {formatDate(checkout.dateDue)}, {overdueDays} day
+          {overdueDays === 1 ? "" : "s"} ago. {outstanding.length} item
+          {outstanding.length === 1 ? " is" : "s are"} still out.
+        </p>
+      ) : null}
       {checkout.status === "CANCELLED" ? (
         <p role="status" className="font-semibold">
           This check-out was cancelled. Its items are free for other check-outs.
@@ -104,6 +152,32 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
           ) : null}
         </dl>
       </Card>
+
+      {checkingIn && outstanding.length > 0 ? (
+        <Card title="Check items in">
+          <p className="mb-3">
+            Tick what came back, set each item&apos;s condition and add any notes. A condition that
+            opens a repair ticket opens one for that item with your notes.
+          </p>
+          <ActionForm
+            action={checkInAction.bind(null, checkout.id)}
+            submitLabel="Check in ticked items"
+            pendingLabel="Checking in…"
+            className="flex flex-col gap-3"
+          >
+            <CheckInFields
+              key={outstanding.map((line) => line.id).join()}
+              lines={outstanding.map((line) => ({
+                id: line.id,
+                code: line.item.code,
+                name: line.item.name,
+                conditionId: line.item.conditionId,
+              }))}
+              conditions={conditions}
+            />
+          </ActionForm>
+        </Card>
+      ) : null}
 
       <ContractPanel
         checkout={checkout}
@@ -205,6 +279,7 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
                     <th className="p-2">Item</th>
                     <th className="p-2">Condition</th>
                     <th className="p-2">Fee (optional)</th>
+                    {showReturns ? <th className="p-2">Back</th> : null}
                     {editable ? (
                       <th className="p-2">
                         <span className="sr-only">Remove</span>
@@ -247,6 +322,21 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
                           formatMoney(line.fee)
                         )}
                       </td>
+                      {showReturns ? (
+                        <td className="p-2">
+                          {line.returnedAt ? (
+                            <>
+                              {formatTime(line.returnedAt, timeZone)}
+                              <span className="block">
+                                {line.returnCondition?.label ?? "Condition not recorded"}
+                                {line.returnNotes ? `: ${line.returnNotes}` : ""}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="font-semibold">Not back yet</span>
+                          )}
+                        </td>
+                      ) : null}
                       {editable ? (
                         <td className="p-2">
                           <ActionForm
@@ -295,6 +385,46 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
           </Card>
         </>
       ) : null}
+      {visibleTickets.length > 0 ? (
+        <section className="flex flex-col gap-2" aria-labelledby="return-tickets-heading">
+          <h2 id="return-tickets-heading" className="text-xl">
+            Repair tickets from this check-out
+          </h2>
+          <ul className="flex flex-col gap-1">
+            {visibleTickets.map((ticket) => (
+              <li key={ticket.id}>
+                <Link href={`/tickets/${ticket.id}`} className="text-accent hover:underline">
+                  #{ticket.number} {ticket.title}
+                </Link>{" "}
+                <span className="text-muted">
+                  ({ticket.item.code}, {ticketStatusLabels[ticket.status]})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="flex flex-col gap-2" aria-labelledby="history-heading">
+        <h2 id="history-heading" className="text-xl">
+          History
+        </h2>
+        <ol className="flex flex-col gap-2">
+          {history.map((entry, index) => (
+            <li key={index}>
+              <span className="text-muted">{formatTime(entry.at, timeZone)}</span> {entry.text}
+              {entry.details.length > 0 ? (
+                <ul className="list-disc pl-5">
+                  {entry.details.map((detail) => (
+                    <li key={detail}>{detail}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </section>
+
       {cancellable ? (
         <Card title="Cancel this check-out">
           <p className="mb-3">

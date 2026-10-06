@@ -263,6 +263,7 @@ model User {
   checkoutsAsStaff              Checkout[]                @relation("CheckoutStaffRep")
   checkoutsCreated              Checkout[]                @relation("CheckoutCreatedBy")
   checkoutLinesAdded            CheckoutLine[]
+  checkoutLinesReturned         CheckoutLine[]            @relation("CheckoutLineReturnedBy")
   contractTemplateVersionsSaved ContractTemplateVersion[]
   contractsPrepared             Contract[]
   signaturesCollected           ContractSignature[]       @relation("SignatureCollectedBy")
@@ -506,6 +507,8 @@ model ServiceTicket {
 
   maintainxWorkOrderId String?
   maintainxSyncedAt    DateTime? @db.Timestamptz(3)
+  /// The check-out the item came back from damaged, when the ticket was opened on return.
+  checkoutId           String?   @db.Uuid
   completedAt          DateTime? @db.Timestamptz(3)
   cancelledAt          DateTime? @db.Timestamptz(3)
   createdAt            DateTime  @default(now()) @db.Timestamptz(3)
@@ -522,11 +525,13 @@ model ServiceTicket {
   events             TicketEvent[]
   attachments        Attachment[]
   serviceLog         ServiceLog?
+  checkout           Checkout?     @relation(fields: [checkoutId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, number])
   @@unique([organizationId, maintainxWorkOrderId])
   @@index([campusId, departmentId, status])
   @@index([itemId])
+  @@index([checkoutId])
 }
 
 /// Timeline entry on a ticket: actions, comments and attachments.
@@ -767,15 +772,18 @@ model Checkout {
   notes          String?
   createdById    String?        @db.Uuid
   cancelledAt    DateTime?      @db.Timestamptz(3)
+  /// When the last item came back.
+  returnedAt     DateTime?      @db.Timestamptz(3)
   createdAt      DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime       @updatedAt @db.Timestamptz(3)
 
-  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  campus       Campus         @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  staffRep     User?          @relation("CheckoutStaffRep", fields: [staffRepId], references: [id], onDelete: SetNull)
-  createdBy    User?          @relation("CheckoutCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  campus       Campus          @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  staffRep     User?           @relation("CheckoutStaffRep", fields: [staffRepId], references: [id], onDelete: SetNull)
+  createdBy    User?           @relation("CheckoutCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   lines        CheckoutLine[]
   contracts    Contract[]
+  tickets      ServiceTicket[]
 
   @@unique([organizationId, number])
   @@index([campusId, status])
@@ -796,6 +804,7 @@ model CheckoutLine {
   returnedAt        DateTime? @db.Timestamptz(3)
   returnConditionId String?   @db.Uuid
   returnNotes       String?
+  returnedById      String?   @db.Uuid
   addedById         String?   @db.Uuid
   createdAt         DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
@@ -804,6 +813,7 @@ model CheckoutLine {
   item            Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
   returnCondition ItemCondition? @relation(fields: [returnConditionId], references: [id], onDelete: SetNull)
   addedBy         User?          @relation(fields: [addedById], references: [id], onDelete: SetNull)
+  returnedBy      User?          @relation("CheckoutLineReturnedBy", fields: [returnedById], references: [id], onDelete: SetNull)
 
   @@unique([checkoutId, itemId])
   @@index([itemId])

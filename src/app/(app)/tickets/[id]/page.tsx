@@ -122,6 +122,23 @@ export default async function TicketPage({ params, searchParams }: PageProps<"/t
               <dd>
                 {ticket.reporter?.displayName ?? "A former user"} on {when(ticket.createdAt)}
               </dd>
+              {ticket.checkout &&
+              can(user, "checkout:read", {
+                organizationId: ticket.organizationId,
+                campusId: ticket.checkout.campusId,
+              }) ? (
+                <>
+                  <dt className="text-muted">Came back from</dt>
+                  <dd>
+                    <Link
+                      href={`/checkouts/${ticket.checkout.id}`}
+                      className="text-accent hover:underline"
+                    >
+                      Check-out #{ticket.checkout.number} ({ticket.checkout.groupName})
+                    </Link>
+                  </dd>
+                </>
+              ) : null}
               <dt className="text-muted">Assigned to</dt>
               <dd>
                 {assigneeLabel(ticket) ?? "Nobody yet"}
