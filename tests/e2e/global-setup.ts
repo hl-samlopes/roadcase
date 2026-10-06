@@ -312,6 +312,7 @@ async function loadFixtures(prisma: PrismaClient) {
       branding: { create: {} },
       campuses: { create: { code: appearanceOrganization.campusCode, name: "Fieldhouse" } },
     },
+    include: { campuses: true },
   });
   for (const [account, displayName, level] of [
     [appearanceOrganization.admin, "Fieldhouse Admin", "ADMIN"],
@@ -330,6 +331,23 @@ async function loadFixtures(prisma: PrismaClient) {
       },
     });
   }
+  await prisma.user.create({
+    data: {
+      organizationId: fieldhouse.id,
+      username: appearanceOrganization.campusAdmin.username,
+      passwordHash: await hash(appearanceOrganization.campusAdmin.password),
+      displayName: "Fieldhouse Campus Admin",
+      email: `${appearanceOrganization.campusAdmin.username}@example.com`,
+      grants: {
+        create: {
+          organizationId: fieldhouse.id,
+          level: "ADMIN",
+          scopeType: "CAMPUS",
+          campusId: fieldhouse.campuses[0].id,
+        },
+      },
+    },
+  });
 
   await prisma.organization.create({
     data: {

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buttonClass, Card, PageHeader, SelectField, TextField } from "@/components/ui";
-import { canOpenPlacesSettings } from "@/lib/admin/places";
+import { canManageDepartments, canOpenPlacesSettings } from "@/lib/admin/places";
 import { requireUser } from "@/lib/authz";
 import { getCampusContext } from "@/lib/data/campuses";
 import {
@@ -161,12 +161,20 @@ export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
       {/* New item needs a location linked to a department; say so instead of hiding it silently. */}
       {total === 0 && !filtered && homes.length === 0 && canSetUpPlaces ? (
         <Card title="Set up locations before adding items">
-          <p className="mb-3">
-            Each item needs a home location and an owning department. Add at least one location and
-            one department, then link the department to that location.
-          </p>
+          {canManageDepartments(user) ? (
+            <p className="mb-3">
+              Each item needs a home location and an owning department. Add at least one location
+              and one department, then link the department to that location.
+            </p>
+          ) : (
+            <p className="mb-3">
+              Each item needs a home location and an owning department. You can add locations at
+              your campus; an organization admin then needs to add a department and link it to one
+              of them.
+            </p>
+          )}
           <Link href="/settings/locations" className={buttonClass("primary")}>
-            Set up locations and departments
+            Set up locations
           </Link>
         </Card>
       ) : null}

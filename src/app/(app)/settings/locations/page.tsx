@@ -73,8 +73,15 @@ export default async function LocationsPage() {
       <PageHeader title="Locations and departments" />
       <p className="text-muted">
         Each item has a home location (a camp or venue on a campus) and an owning department. A
-        department can keep equipment only at the locations linked to it below.
+        department can keep equipment only at the locations linked to it
+        {departmentsAllowed ? " below" : ""}.
       </p>
+      {departmentsAllowed ? null : (
+        <p className="text-muted">
+          Organization admins add departments and link them to locations. Items can be added at a
+          location once a department is linked to it.
+        </p>
+      )}
 
       {showSetup ? (
         <Card title="Before items can be added">

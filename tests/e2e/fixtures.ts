@@ -70,5 +70,6 @@ export const appearanceOrganization = {
   name: "Fieldhouse Camps",
   campusCode: "FLD",
   admin: { username: "fh-admin", password: "e2e-fh-admin-pass-1" },
+  campusAdmin: { username: "fh-campus-admin", password: "e2e-fh-campus-admin-pass-1" },
   viewer: { username: "fh-viewer", password: "e2e-fh-viewer-pass-1" },
 };

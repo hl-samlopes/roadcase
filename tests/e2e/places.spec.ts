@@ -51,7 +51,8 @@ test("a new organization is pointed to location setup before it can add items", 
   await signIn(admin, emptyOrg.admin, emptyOrg.slug);
   await expect(admin.getByRole("status")).toHaveText("No items yet.");
   await expect(admin.getByRole("link", { name: "New item" })).toHaveCount(0);
-  await admin.getByRole("link", { name: "Set up locations and departments" }).click();
+  await expect(admin.getByText("Add at least one location and one department")).toBeVisible();
+  await admin.getByRole("link", { name: "Set up locations" }).click();
   await expect(admin.getByRole("heading", { name: "Before items can be added" })).toBeVisible();
   await expect(admin.getByText("1. Add a location on a campus (to do)")).toBeVisible();
 
@@ -59,7 +60,19 @@ test("a new organization is pointed to location setup before it can add items", 
   const viewer = await (await browser.newContext()).newPage();
   await signIn(viewer, emptyOrg.viewer, emptyOrg.slug);
   await expect(viewer.getByRole("status")).toHaveText("No items yet.");
-  await expect(viewer.getByRole("link", { name: "Set up locations and departments" })).toHaveCount(
+  await expect(viewer.getByRole("link", { name: "Set up locations" })).toHaveCount(0);
+
+  // Campus admins can add locations but not departments, so they're told who does the rest.
+  const campusAdmin = await (await browser.newContext()).newPage();
+  await signIn(campusAdmin, emptyOrg.campusAdmin, emptyOrg.slug);
+  await expect(
+    campusAdmin.getByText("an organization admin then needs to add a department"),
+  ).toBeVisible();
+  await campusAdmin.getByRole("link", { name: "Set up locations" }).click();
+  await expect(
+    campusAdmin.getByText("Organization admins add departments and link them to locations."),
+  ).toBeVisible();
+  await expect(campusAdmin.getByRole("heading", { name: "Departments", exact: true })).toHaveCount(
     0,
   );
 });
