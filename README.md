@@ -26,6 +26,11 @@ Check-outs are signed on the check-out's signing screen (made for a tablet). Onc
 parties have signed, the worker makes the contract PDF and emails it to both; with
 `npm run worker` running, it shows up in Mailpit with the PDF attached.
 
+Items come back on the check-out page (scan to tick each one, then set its condition). A
+condition that starts a repair ticket opens one for that item. Check-outs are overdue the
+day after they're due, in `APP_TIME_ZONE`; the worker emails the staff representative on
+the first overdue day and then weekly.
+
 The seed is safe to rerun: it only creates rows that are missing and never changes the
 admin password after the first run.
 

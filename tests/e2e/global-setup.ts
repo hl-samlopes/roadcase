@@ -14,6 +14,7 @@ import { hash } from "argon2";
 import pg from "pg";
 import { PrismaClient } from "../../src/generated/prisma/client.ts";
 import { seed } from "../../prisma/seed/run.ts";
+import { appTimeZone, dateInZone } from "../../src/lib/checkouts/overdue.ts";
 import { placeholderTemplate } from "../../src/lib/contracts/placeholder.ts";
 import {
   accounts,
@@ -25,6 +26,7 @@ import {
   E2E_DATABASE_URL,
   E2E_SECRETS_KEY,
   FAKE_SLACK_URL,
+  harborOrganization,
   MAILPIT_URL,
   notifyOrganization,
   existingTicket,
@@ -84,6 +86,7 @@ export default async function globalSetup() {
     );
     await loadFixtures(prisma);
     await loadNotifyOrganization(prisma);
+    await loadHarborOrganization(prisma);
   } finally {
     await prisma.$disconnect();
   }
@@ -613,4 +616,97 @@ async function loadNotifyOrganization(prisma: PrismaClient) {
       },
     },
   });
+}
+
+/** Harbor Camps: two check-outs that are out, one to check in and one overdue. */
+async function loadHarborOrganization(prisma: PrismaClient) {
+  const o = harborOrganization;
+  const org = await prisma.organization.create({
+    data: {
+      slug: o.slug,
+      name: o.name,
+      checkoutSequence: 2,
+      branding: { create: {} },
+      campuses: {
+        create: { id: o.campus.id, code: o.campus.code, name: o.campus.name, itemSequence: 3 },
+      },
+      categories: { create: { name: "Audio" } },
+      itemConditions: {
+        create: [
+          { label: "Good", isDefault: true, availableForCheckout: true, position: 0 },
+          { label: "Needs repair", startsRepairTicket: true, position: 1 },
+        ],
+      },
+    },
+    include: { categories: true, itemConditions: { orderBy: { position: "asc" } } },
+  });
+  const organizationId = org.id;
+  const [good] = org.itemConditions;
+  await prisma.location.create({
+    data: { id: o.locationId, organizationId, campusId: o.campus.id, name: "Boathouse" },
+  });
+  await prisma.department.create({
+    data: {
+      id: o.departmentId,
+      organizationId,
+      name: "Production",
+      locations: { create: { locationId: o.locationId } },
+    },
+  });
+  const editor = await prisma.user.create({
+    data: {
+      organizationId,
+      username: o.editor.username,
+      passwordHash: await hash(o.editor.password),
+      displayName: "Harbor Editor",
+      email: `${o.editor.username}@example.com`,
+      grants: {
+        create: { organizationId, level: "EDITOR", scopeType: "CAMPUS", campusId: o.campus.id },
+      },
+    },
+  });
+  const item = (fields: { code: string; name: string }) =>
+    prisma.item.create({
+      data: {
+        ...fields,
+        organizationId,
+        campusId: o.campus.id,
+        locationId: o.locationId,
+        departmentId: o.departmentId,
+        categoryId: org.categories[0].id,
+        conditionId: good.id,
+      },
+    });
+  const [mic, amp, pa] = [await item(o.mic), await item(o.amp), await item(o.pa)];
+
+  // "Yesterday" where the organization is, so the worker's first scan sees it overdue.
+  const today = dateInZone(new Date(), appTimeZone());
+  const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000);
+  const out = (
+    fields: { id: string; number: number; group: string },
+    dateDue: Date,
+    items: { id: string }[],
+  ) =>
+    prisma.checkout.create({
+      data: {
+        id: fields.id,
+        organizationId,
+        campusId: o.campus.id,
+        number: fields.number,
+        status: "OUT",
+        groupName: fields.group,
+        guestRepName: "Casey Harbor",
+        guestRepEmail: "casey@example.com",
+        guestRepPhone: "(555) 777-8888",
+        staffRepId: editor.id,
+        createdById: editor.id,
+        dateOut: new Date(yesterday.getTime() - 3 * 86_400_000),
+        dateDue,
+        lines: {
+          create: items.map((i) => ({ organizationId, itemId: i.id, addedById: editor.id })),
+        },
+      },
+    });
+  await out(o.band, new Date("2030-06-01T00:00:00Z"), [mic, amp]);
+  await out(o.sailing, yesterday, [pa]);
 }

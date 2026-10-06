@@ -109,6 +109,27 @@ export const notifyOrganization = {
   southEditor: { username: "sg-south", password: "e2e-sg-south-pass-1" },
 };
 
+/**
+ * An organization for return and overdue tests: its ticket numbers and email
+ * stay apart from the notification tests in Signal Camps.
+ */
+export const harborOrganization = {
+  slug: "harbor",
+  name: "Harbor Camps",
+  campus: { id: "0190a000-0000-7000-8000-000000000051", code: "HBR", name: "Harbor" },
+  locationId: "0190a000-0000-7000-8000-000000000052",
+  departmentId: "0190a000-0000-7000-8000-000000000053",
+  mic: { code: "HBR-000001", name: "Return mic" },
+  amp: { code: "HBR-000002", name: "Return amp" },
+  pa: { code: "HBR-000003", name: "Overdue PA" },
+  /** Out, due back in the future: checked in by the returns test. */
+  band: { id: "0190a000-0000-7000-8000-000000000054", number: 1, group: "Harbor youth band" },
+  /** Out, due back yesterday (in the organization's time zone): overdue. */
+  sailing: { id: "0190a000-0000-7000-8000-000000000055", number: 2, group: "Harbor sailing club" },
+  /** Campus editor and the staff representative on both check-outs. */
+  editor: { username: "hb-editor", password: "e2e-hb-editor-pass-1" },
+};
+
 /** A second organization with its own branding, for sign-in branding tests. */
 export const brandedOrganization = {
   slug: "northwind",
