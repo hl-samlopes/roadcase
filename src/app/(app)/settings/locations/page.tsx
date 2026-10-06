@@ -14,7 +14,7 @@ import {
   setLocationArchivedAction,
   updateLocationAction,
 } from "./actions";
-import { CardHeaderWithAdd, EditableRow } from "./place-rows";
+import { CardHeaderWithAdd, EditableRow } from "@/components/editable-rows";
 
 export const metadata: Metadata = { title: "Locations and departments" };
 

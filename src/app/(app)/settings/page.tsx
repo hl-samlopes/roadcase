@@ -26,6 +26,12 @@ const sections = [
     organizationAdminOnly: true,
   },
   {
+    href: "/settings/categories",
+    title: "Categories",
+    description: "The categories and subcategories items are sorted into.",
+    organizationAdminOnly: true,
+  },
+  {
     href: "/settings/conditions",
     title: "Item conditions",
     description:
