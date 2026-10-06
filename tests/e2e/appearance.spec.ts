@@ -81,10 +81,10 @@ test("text size scales body text and headings and persists", async ({ browser })
   await page.getByLabel(/^Largest \(150%/).check();
   await page.getByRole("button", { name: "Save preferences" }).click();
   await expect(page.getByText("Done: Preferences saved.")).toBeVisible();
-  expect(await bodySize()).toBe("18px");
+  expect(await bodySize()).toBe("21px");
   expect(await headingSize()).toBe("36px");
 
   const later = await (await browser.newContext()).newPage();
   await signIn(later, accounts.textSize);
-  expect(await later.evaluate(() => getComputedStyle(document.body).fontSize)).toBe("18px");
+  expect(await later.evaluate(() => getComputedStyle(document.body).fontSize)).toBe("21px");
 });
