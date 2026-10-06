@@ -382,3 +382,21 @@ describe("check-outs", () => {
     expect(checkoutCampusIds(mixed, "checkout:read", [HLK, HNE])).toEqual([HLK, HNE]);
   });
 });
+
+describe("contract templates", () => {
+  it("are managed by admins over the campus, not editors or narrower admins", () => {
+    const campus = { organizationId: ORG, campusId: HLK };
+    const campusAdmin = actor([grant({ level: "ADMIN", scopeType: "CAMPUS", campusId: HLK })]);
+    const orgAdmin = actor([grant({ level: "ADMIN", scopeType: "ORGANIZATION" })]);
+    const campusEditor = actor([grant({ level: "EDITOR", scopeType: "CAMPUS", campusId: HLK })]);
+    const locationAdmin = actor([
+      grant({ level: "ADMIN", scopeType: "LOCATION", locationId: MEADOW_RANCH }),
+    ]);
+    const otherCampusAdmin = actor([grant({ level: "ADMIN", scopeType: "CAMPUS", campusId: HNE })]);
+    expect(can(campusAdmin, "contracts:manage", campus)).toBe(true);
+    expect(can(orgAdmin, "contracts:manage", campus)).toBe(true);
+    expect(can(campusEditor, "contracts:manage", campus)).toBe(false);
+    expect(can(locationAdmin, "contracts:manage", campus)).toBe(false);
+    expect(can(otherCampusAdmin, "contracts:manage", campus)).toBe(false);
+  });
+});

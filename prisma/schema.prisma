@@ -115,24 +115,25 @@ model Organization {
   createdAt        DateTime @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime @updatedAt @db.Timestamptz(3)
 
-  branding         OrganizationBranding?
-  campuses         Campus[]
-  locations        Location[]
-  departments      Department[]
-  users            User[]
-  permissionGrants PermissionGrant[]
-  categories       Category[]
-  itemConditions   ItemCondition[]
-  fieldDefinitions FieldDefinition[]
-  items            Item[]
-  attachments      Attachment[]
-  serviceTickets   ServiceTicket[]
-  serviceLogs      ServiceLog[]
-  rfidTags         RfidTag[]
-  jobFailures      JobFailure[]
-  sentEmails       SentEmail[]
-  slackWebhooks    SlackWebhook[]
-  checkouts        Checkout[]
+  branding                 OrganizationBranding?
+  campuses                 Campus[]
+  locations                Location[]
+  departments              Department[]
+  users                    User[]
+  permissionGrants         PermissionGrant[]
+  categories               Category[]
+  itemConditions           ItemCondition[]
+  fieldDefinitions         FieldDefinition[]
+  items                    Item[]
+  attachments              Attachment[]
+  serviceTickets           ServiceTicket[]
+  serviceLogs              ServiceLog[]
+  rfidTags                 RfidTag[]
+  jobFailures              JobFailure[]
+  sentEmails               SentEmail[]
+  slackWebhooks            SlackWebhook[]
+  checkouts                Checkout[]
+  contractTemplateVersions ContractTemplateVersion[]
 }
 
 model Campus {
@@ -147,15 +148,16 @@ model Campus {
   createdAt      DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
 
-  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  locations        Location[]
-  items            Item[]
-  serviceTickets   ServiceTicket[]
-  serviceLogs      ServiceLog[]
-  permissionGrants PermissionGrant[]
-  userPreferences  UserPreference[]
-  slackWebhooks    SlackWebhook[]
-  checkouts        Checkout[]
+  organization             Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  locations                Location[]
+  items                    Item[]
+  serviceTickets           ServiceTicket[]
+  serviceLogs              ServiceLog[]
+  permissionGrants         PermissionGrant[]
+  userPreferences          UserPreference[]
+  slackWebhooks            SlackWebhook[]
+  checkouts                Checkout[]
+  contractTemplateVersions ContractTemplateVersion[]
 
   @@unique([organizationId, code])
   @@unique([id, organizationId])
@@ -244,22 +246,23 @@ model User {
   createdAt         DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
 
-  organization       Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  preference         UserPreference?
-  grants             PermissionGrant[]      @relation("GrantUser")
-  grantsCreated      PermissionGrant[]      @relation("GrantCreatedBy")
-  itemsCreated       Item[]                 @relation("ItemCreatedBy")
-  itemsUpdated       Item[]                 @relation("ItemUpdatedBy")
-  attachments        Attachment[]
-  ticketsReported    ServiceTicket[]        @relation("TicketReporter")
-  ticketsAssigned    ServiceTicket[]        @relation("TicketAssigneeUser")
-  ticketEvents       TicketEvent[]
-  serviceLogsCreated ServiceLog[]
-  brandingUpdates    OrganizationBranding[]
-  slackWebhooksAdded SlackWebhook[]
-  checkoutsAsStaff   Checkout[]             @relation("CheckoutStaffRep")
-  checkoutsCreated   Checkout[]             @relation("CheckoutCreatedBy")
-  checkoutLinesAdded CheckoutLine[]
+  organization                  Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  preference                    UserPreference?
+  grants                        PermissionGrant[]         @relation("GrantUser")
+  grantsCreated                 PermissionGrant[]         @relation("GrantCreatedBy")
+  itemsCreated                  Item[]                    @relation("ItemCreatedBy")
+  itemsUpdated                  Item[]                    @relation("ItemUpdatedBy")
+  attachments                   Attachment[]
+  ticketsReported               ServiceTicket[]           @relation("TicketReporter")
+  ticketsAssigned               ServiceTicket[]           @relation("TicketAssigneeUser")
+  ticketEvents                  TicketEvent[]
+  serviceLogsCreated            ServiceLog[]
+  brandingUpdates               OrganizationBranding[]
+  slackWebhooksAdded            SlackWebhook[]
+  checkoutsAsStaff              Checkout[]                @relation("CheckoutStaffRep")
+  checkoutsCreated              Checkout[]                @relation("CheckoutCreatedBy")
+  checkoutLinesAdded            CheckoutLine[]
+  contractTemplateVersionsSaved ContractTemplateVersion[]
 
   @@unique([organizationId, username])
   @@unique([organizationId, email])
@@ -800,4 +803,27 @@ model CheckoutLine {
 
   @@unique([checkoutId, itemId])
   @@index([itemId])
+}
+
+/// One saved version of a campus's contract template. Versions are never
+/// changed or deleted: saving creates the next version, and contracts keep
+/// the version they were signed with. The campus's template is its highest
+/// version.
+model ContractTemplateVersion {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  campusId       String   @db.Uuid
+  /// 1, 2, 3, ... per campus.
+  version        Int
+  /// The editor document (TipTap JSON), checked against an allow-list of
+  /// node types on save (src/lib/contracts/document.ts).
+  content        Json
+  createdById    String?  @db.Uuid
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  campus       Campus       @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([campusId, version])
 }

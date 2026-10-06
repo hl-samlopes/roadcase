@@ -115,3 +115,113 @@ h3 {
   color: var(--muted);
   opacity: 1;
 }
+
+/*
+ * Contract text, in the template editor and the preview alike. Tailwind's
+ * reset strips heading sizes, list markers and table borders, so they come
+ * back here, using theme tokens only.
+ */
+.contract {
+  line-height: 1.6;
+}
+
+.contract :is(h1, h2, h3, h4) {
+  margin: 1.25rem 0 0.5rem;
+  line-height: 1.3;
+}
+
+/* Levels match between the editor (h1-h3) and the preview (h2-h4, under the page title). */
+.contract h1,
+.contract .level-1 {
+  font-size: 1.5rem;
+}
+
+.contract h2:not([class]),
+.contract .level-2 {
+  font-size: 1.2rem;
+}
+
+.contract h3:not([class]),
+.contract .level-3 {
+  font-size: 1.05rem;
+}
+
+.contract p {
+  margin: 0 0 0.75rem;
+}
+
+.contract ul,
+.contract ol {
+  margin: 0 0 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.contract ul {
+  list-style: disc;
+}
+
+.contract ol {
+  list-style: decimal;
+}
+
+.contract li > p {
+  margin: 0 0 0.25rem;
+}
+
+.contract hr {
+  margin: 1rem 0;
+  border-color: var(--border);
+}
+
+.contract table {
+  width: 100%;
+  margin: 0 0 0.75rem;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.contract :is(td, th) {
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.5rem;
+  vertical-align: top;
+  text-align: left;
+}
+
+.contract th {
+  font-weight: 600;
+  background: var(--bg);
+}
+
+.contract :is(td, th) > p {
+  margin: 0;
+}
+
+/* Merge fields in the editor: known ones outlined, unknown ones dashed and labelled. */
+.contract .merge-field {
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0 0.15rem;
+}
+
+.contract .merge-field-unknown {
+  border: 1px dashed var(--bad);
+  border-radius: var(--radius);
+  padding: 0 0.15rem;
+}
+
+.contract .merge-field-unknown::after {
+  content: " (unknown field)";
+  color: var(--bad);
+  font-size: 0.85em;
+}
+
+/* The editor's own chrome: selected table cells and the editing caret area. */
+.contract .selectedCell {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.contract.ProseMirror {
+  min-height: 16rem;
+  outline: none;
+}

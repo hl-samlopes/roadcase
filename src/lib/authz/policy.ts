@@ -64,6 +64,7 @@ export const actionLevels = {
   "users:manage": "ADMIN",
   "grants:manage": "ADMIN",
   "settings:manage": "ADMIN",
+  "contracts:manage": "ADMIN",
 } as const satisfies Record<string, PermissionLevel>;
 
 export type Action = keyof typeof actionLevels;
