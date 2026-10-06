@@ -2,7 +2,7 @@
 
 Roadcase is a standalone, multi-campus web app for managing production equipment: inventory, service logs and tickets, guest check-out contracts, and a guest portal. It starts at Hume New England (HNE) as the first organization; built so Hume Lake (HLK), Hume SoCal (HSC) and other camps can join. The product name is Roadcase; do not put "Hume" in the product name, code identifiers or default UI. Hume branding is applied only through the organization branding settings.
 
-Full scope: `docs/SCOPE.md`. Current work: `docs/PHASE3_PLAN.md` (earlier phases: `docs/PHASE1_PLAN.md`, `docs/PHASE2_PLAN.md`). Read both before starting a session.
+Full scope: `docs/SCOPE.md`. Current work: `docs/PHASE4_PLAN.md` (earlier phases: `docs/PHASE1_PLAN.md` to `docs/PHASE3_PLAN.md`). Read both before starting a session.
 
 ## Stack
 - Next.js (App Router, TypeScript strict), React Server Components where possible
