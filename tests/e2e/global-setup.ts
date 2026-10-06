@@ -484,37 +484,50 @@ async function loadNotifyOrganization(prisma: PrismaClient) {
       branding: { create: {} },
       campuses: {
         create: [
-          { id: o.north.id, code: o.north.code, name: o.north.name, itemSequence: 1 },
-          { id: o.south.id, code: o.south.code, name: o.south.name },
+          { id: o.north.id, code: o.north.code, name: o.north.name, itemSequence: 3 },
+          { id: o.south.id, code: o.south.code, name: o.south.name, itemSequence: 1 },
         ],
       },
       categories: { create: { name: "Audio" } },
-      itemConditions: { create: { label: "Good", isDefault: true } },
+      itemConditions: {
+        create: [
+          { label: "Good", isDefault: true, availableForCheckout: true, position: 0 },
+          { label: "Poor", position: 1 },
+        ],
+      },
     },
-    include: { categories: true, itemConditions: true },
+    include: { categories: true, itemConditions: { orderBy: { position: "asc" } } },
   });
+  const [good, poor] = org.itemConditions;
   const organizationId = org.id;
-  await prisma.location.create({
-    data: { id: o.locationId, organizationId, campusId: o.north.id, name: "North Hall" },
+  await prisma.location.createMany({
+    data: [
+      { id: o.locationId, organizationId, campusId: o.north.id, name: "North Hall" },
+      { id: o.southLocationId, organizationId, campusId: o.south.id, name: "South Hall" },
+    ],
   });
   await prisma.department.create({
     data: {
       id: o.departmentId,
       organizationId,
       name: "Production",
-      locations: { create: { locationId: o.locationId } },
+      locations: { create: [{ locationId: o.locationId }, { locationId: o.southLocationId }] },
     },
   });
-  await prisma.item.create({
-    data: {
-      ...o.item,
+  const north = { campusId: o.north.id, locationId: o.locationId };
+  const south = { campusId: o.south.id, locationId: o.southLocationId };
+  await prisma.item.createMany({
+    data: [
+      { ...o.item, ...north, conditionId: good.id },
+      { ...o.micStand, ...north, conditionId: good.id },
+      { ...o.oldDiBox, ...north, conditionId: poor.id },
+      { ...o.southMixer, ...south, conditionId: good.id },
+    ].map((item) => ({
+      ...item,
       organizationId,
-      campusId: o.north.id,
-      locationId: o.locationId,
       departmentId: o.departmentId,
       categoryId: org.categories[0].id,
-      conditionId: org.itemConditions[0].id,
-    },
+    })),
   });
 
   const people = [

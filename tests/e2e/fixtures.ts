@@ -64,8 +64,9 @@ export const accounts = {
 };
 
 /**
- * An organization for ticket notification tests, so its tickets and email
- * never mix with other specs. Everyone's address is <username>@example.com.
+ * An organization for ticket notification and check-out tests, so its
+ * tickets, email and check-outs never mix with other specs. Everyone's
+ * address is <username>@example.com.
  */
 export const notifyOrganization = {
   slug: "signal",
@@ -75,6 +76,11 @@ export const notifyOrganization = {
   locationId: "0190a000-0000-7000-8000-000000000033",
   departmentId: "0190a000-0000-7000-8000-000000000034",
   item: { id: "0190a000-0000-7000-8000-000000000035", code: "SGN-000001", name: "Stage box" },
+  southLocationId: "0190a000-0000-7000-8000-000000000036",
+  /** For check-outs: available at North, a North item in Poor (not available), and a South item. */
+  micStand: { code: "SGN-000002", name: "Mic stand" },
+  oldDiBox: { code: "SGN-000003", name: "Old DI box" },
+  southMixer: { code: "SGS-000001", name: "South mixer" },
   admin: { username: "sg-admin", password: "e2e-sg-admin-pass-1" },
   /** Editor at Signal North: gets new-ticket emails. */
   editor: { username: "sg-editor", password: "e2e-sg-editor-pass-1" },

@@ -1,5 +1,6 @@
 import type {
   AssigneeType,
+  CheckoutStatus,
   PermissionLevel,
   ScopeType,
   TicketStatus,
@@ -25,6 +26,15 @@ export const ticketStatusLabels: Record<TicketStatus, string> = {
   IN_PROGRESS: "In progress",
   WAITING_ON_PARTS_OR_VENDOR: "Waiting on parts or vendor",
   COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+};
+
+export const checkoutStatusLabels: Record<CheckoutStatus, string> = {
+  DRAFT: "Draft",
+  AWAITING_SIGNATURES: "Awaiting signatures",
+  OUT: "Out",
+  PARTIALLY_RETURNED: "Partially returned",
+  RETURNED: "Returned",
   CANCELLED: "Cancelled",
 };
 

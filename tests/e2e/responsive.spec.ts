@@ -8,6 +8,8 @@ const pages = [
   "/tickets?status=all",
   `/tickets/${existingTicket.id}`,
   "/service-log",
+  "/checkouts",
+  "/checkouts/new",
   "/settings/users",
 ];
 

@@ -30,6 +30,7 @@ export function ActionForm({
   variant = "primary",
   className = "flex flex-col gap-3",
   resetOnSuccess = true,
+  id,
   children,
 }: {
   action: Action;
@@ -39,6 +40,8 @@ export function ActionForm({
   variant?: "primary" | "secondary" | "danger";
   className?: string;
   resetOnSuccess?: boolean;
+  /** Lets inputs elsewhere on the page join this form with `form={id}`. */
+  id?: string;
   children?: ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(action, initialFormState);
@@ -58,7 +61,7 @@ export function ActionForm({
   }
 
   return (
-    <form ref={formRef} action={formAction} onSubmit={onSubmit} className={className}>
+    <form ref={formRef} id={id} action={formAction} onSubmit={onSubmit} className={className}>
       {children}
       {state.error ? (
         <div role="alert" className="border-bad text-bad rounded-theme border p-2">
