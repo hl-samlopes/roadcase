@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { LocalDateField } from "@/components/local-date-field";
+import { AssigneeFields } from "./assignee-fields";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, PageHeader, SelectField, TextAreaField, TextField } from "@/components/ui";
 import { can, canCommentOnTicket, isTicketClosed, requireUser } from "@/lib/authz";
@@ -279,63 +280,16 @@ export default async function TicketPage({ params, searchParams }: PageProps<"/t
                       vendorContact: "Contact",
                     }}
                   >
-                    <fieldset className="flex flex-col gap-2">
-                      <legend className="mb-1 font-semibold">Who will do the work</legend>
-                      {(
-                        [
-                          ["USER", "A person on staff"],
-                          ["DEPARTMENT", "Another department"],
-                          ["VENDOR", "An outside company"],
-                        ] as const
-                      ).map(([value, label]) => (
-                        <label key={value} className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name="assigneeType"
-                            value={value}
-                            defaultChecked={ticket.assigneeType === value}
-                            className="accent-accent"
-                          />
-                          {label}
-                        </label>
-                      ))}
-                    </fieldset>
-                    <SelectField
-                      label="Person"
-                      name="assigneeUserId"
-                      defaultValue={ticket.assigneeUserId ?? ""}
-                    >
-                      <option value="">Choose a person</option>
-                      {people.map((person) => (
-                        <option key={person.id} value={person.id}>
-                          {person.displayName}
-                        </option>
-                      ))}
-                    </SelectField>
-                    <SelectField
-                      label="Department"
-                      name="assigneeDepartmentId"
-                      defaultValue={ticket.assigneeDepartmentId ?? ""}
-                    >
-                      <option value="">Choose a department</option>
-                      {departments.map((department) => (
-                        <option key={department.id} value={department.id}>
-                          {department.name}
-                        </option>
-                      ))}
-                    </SelectField>
-                    <TextField
-                      label="Company"
-                      name="vendorName"
-                      defaultValue={ticket.vendorName ?? ""}
-                      maxLength={200}
-                    />
-                    <TextField
-                      label="Contact"
-                      name="vendorContact"
-                      defaultValue={ticket.vendorContact ?? ""}
-                      maxLength={500}
-                      hint="Name, phone or email for the outside company."
+                    <AssigneeFields
+                      current={{
+                        type: ticket.assigneeType,
+                        userId: ticket.assigneeUserId,
+                        departmentId: ticket.assigneeDepartmentId,
+                        vendorName: ticket.vendorName,
+                        vendorContact: ticket.vendorContact,
+                      }}
+                      people={people}
+                      departments={departments}
                     />
                   </ActionForm>
                 </Card>

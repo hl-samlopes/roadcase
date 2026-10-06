@@ -48,6 +48,9 @@ test("the full flow: flag an item, work the ticket, complete it into a service l
   await expect(editor.getByText("Left channel crackles above half volume.")).toBeVisible();
   const assign = card(editor, "Assign");
   await assign.getByLabel("An outside company").check();
+  // Only the outside company's fields show once that's chosen.
+  await expect(assign.getByLabel("Person", { exact: true })).toHaveCount(0);
+  await expect(assign.getByLabel("Department", { exact: true })).toHaveCount(0);
   await assign.getByLabel("Company", { exact: true }).fill("Acme Audio Repair");
   await assign.getByLabel("Contact").fill("555-0100");
   await assign.getByRole("button", { name: "Save assignment" }).click();
