@@ -105,6 +105,8 @@ const checkoutDetailSelect = {
   createdAt: true,
   campus: { select: { code: true, name: true } },
   staffRep: { select: { displayName: true } },
+  // Same campus scope as the check-out, so whoever reads one can read the other.
+  guestGroup: { select: { id: true, name: true } },
   lines: {
     orderBy: { createdAt: "asc" },
     select: {

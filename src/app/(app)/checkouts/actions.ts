@@ -13,6 +13,7 @@ import {
   type AddResult,
 } from "@/lib/data/checkouts";
 import { db } from "@/lib/db";
+import { getGuestGroup } from "@/lib/data/guest-groups";
 import { formObject, invalid, type FormState } from "@/lib/forms/state";
 
 const NOT_ALLOWED: FormState = { error: "You don't have permission to do that." };
@@ -76,6 +77,12 @@ export async function createCheckoutAction(
   }
   const details = await checkDetails(campus.id, actor.organizationId, formData);
   if (!details.ok) return details.state;
+  // Made from a guest group: it must be one the actor can see, at the same campus.
+  const groupId = String(formData.get("guestGroupId") ?? "");
+  const group = groupId ? await getGuestGroup(actor, groupId) : null;
+  if (groupId && (!group || group.campusId !== campus.id || group.archivedAt)) {
+    return { error: "That guest group can't be used for this check-out." };
+  }
 
   const checkout = await db.$transaction(async (tx) => {
     const organization = await tx.organization.update({
@@ -89,6 +96,7 @@ export async function createCheckoutAction(
         campusId: campus.id,
         number: organization.checkoutSequence,
         createdById: actor.id,
+        guestGroupId: group?.id ?? null,
         ...details.data,
       },
       select: { id: true },

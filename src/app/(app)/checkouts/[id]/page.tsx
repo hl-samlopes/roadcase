@@ -145,6 +145,19 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
             <dt className="text-muted">Staff representative</dt>
             <dd>{checkout.staffRep?.displayName ?? "Nobody (choose one below)"}</dd>
           </div>
+          {checkout.guestGroup ? (
+            <div>
+              <dt className="text-muted">Guest group</dt>
+              <dd>
+                <Link
+                  href={`/guests/${checkout.guestGroup.id}`}
+                  className="text-accent hover:underline"
+                >
+                  {checkout.guestGroup.name}
+                </Link>
+              </dd>
+            </div>
+          ) : null}
           {checkout.notes ? (
             <div className="sm:col-span-2">
               <dt className="text-muted">Notes</dt>

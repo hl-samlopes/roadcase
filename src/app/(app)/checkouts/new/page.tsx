@@ -6,6 +6,7 @@ import { Card, PageHeader, SelectField } from "@/components/ui";
 import { requireUser } from "@/lib/authz";
 import { getCampusContext } from "@/lib/data/campuses";
 import { checkoutCampuses, staffOptions } from "@/lib/data/checkouts";
+import { getGuestGroup } from "@/lib/data/guest-groups";
 import { createCheckoutAction } from "../actions";
 import { CheckoutDetailsFields, detailFieldLabels } from "../details-fields";
 
@@ -16,15 +17,36 @@ export default async function NewCheckoutPage({ searchParams }: PageProps<"/chec
   const campuses = await checkoutCampuses(user, "checkout:manage");
   if (campuses.length === 0) notFound();
 
-  // Campus: the one asked for, else the active campus, else the first allowed.
+  // From a guest group: its campus, and its details filled in.
+  const query = await searchParams;
+  const group = typeof query.group === "string" ? await getGuestGroup(user, query.group) : null;
+  if (query.group && (!group || group.archivedAt)) notFound();
+  const groupCampus = group ? campuses.find((c) => c.id === group.campusId) : null;
+  if (group && !groupCampus) notFound();
+
+  // Campus: the group's, else the one asked for, else the active campus, else the first allowed.
   const { active } = await getCampusContext(user);
-  const requested = (await searchParams).campus;
   const campus =
-    campuses.find((c) => c.id === requested) ??
+    groupCampus ??
+    campuses.find((c) => c.id === query.campus) ??
     campuses.find((c) => c.id === active?.id) ??
     campuses[0];
   const staff = await staffOptions(user.organizationId, campus.id);
   const defaultStaff = staff.some((p) => p.id === user.id) ? user.id : null;
+  const groupValues = group
+    ? {
+        groupName: group.name,
+        guestRepName: group.repName,
+        guestRepEmail: group.repEmail,
+        guestRepPhone: group.repPhone,
+        staffRepId: staff.some((p) => p.id === group.staffContactId)
+          ? group.staffContactId
+          : defaultStaff,
+        dateOut: group.arrivalDate,
+        dateDue: group.departureDate,
+        notes: null,
+      }
+    : undefined;
 
   return (
     <div className="flex max-w-xl flex-col gap-4">
@@ -34,7 +56,16 @@ export default async function NewCheckoutPage({ searchParams }: PageProps<"/chec
         </Link>
       </div>
       <PageHeader title="New check-out" />
-      {campuses.length > 1 ? (
+      {group ? (
+        <p>
+          For guest group{" "}
+          <Link href={`/guests/${group.id}`} className="text-accent hover:underline">
+            {group.name}
+          </Link>
+          : its details are filled in below.
+        </p>
+      ) : null}
+      {campuses.length > 1 && !group ? (
         <form method="get" className="flex flex-wrap items-end gap-2">
           <SelectField label="Campus" name="campus" id="campus-pick" defaultValue={campus.id}>
             {campuses.map((c) => (
@@ -60,8 +91,10 @@ export default async function NewCheckoutPage({ searchParams }: PageProps<"/chec
           resetOnSuccess={false}
         >
           <input type="hidden" name="campusId" value={campus.id} />
+          {group ? <input type="hidden" name="guestGroupId" value={group.id} /> : null}
           <CheckoutDetailsFields
             staff={staff}
+            values={groupValues}
             defaultStaffId={defaultStaff}
             idPrefix="new"
             key={campus.id}

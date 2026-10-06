@@ -13,6 +13,7 @@ import { resolveTheme } from "@/lib/theme/resolve";
 import { renderBrandedEmail, type EmailBrand, type EmailContent } from "./layout";
 import { overdueEmail } from "@/lib/checkouts/overdue-job";
 import { contractEmail } from "@/lib/contracts/email";
+import { portalLinkEmail } from "@/lib/portal/email";
 import { emailProviderFromEnv, type EmailAddress, type EmailAttachment } from "./provider";
 import { testEmailContent } from "./templates";
 
@@ -109,6 +110,10 @@ async function compose(
         return { skip: "recipient can no longer see this check-out" };
       }
       return { to, content: composed.content };
+    }
+    case "portal-link": {
+      const composed = await portalLinkEmail(organizationId, payload.data);
+      return "skip" in composed ? composed : { to, content: composed.content };
     }
   }
 }

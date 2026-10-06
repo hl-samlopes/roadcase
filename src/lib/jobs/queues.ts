@@ -17,7 +17,7 @@ const retry = {
   expireInSeconds: 300,
 } as const;
 
-export const emailTemplates = ["test", "ticket", "contract", "overdue"] as const;
+export const emailTemplates = ["test", "ticket", "contract", "overdue", "portal-link"] as const;
 
 /**
  * Who an email goes to. A user id is looked up when the email is sent, so a

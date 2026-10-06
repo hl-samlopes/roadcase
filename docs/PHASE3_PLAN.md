@@ -33,6 +33,8 @@ None expected. The portal reuses `@react-pdf/renderer` (input list PDF), pg-boss
 
 ## Step 0: Guest groups and portal links
 
+**Done (Oct 6, 2026).** Staff screens are at `/guests` (sidebar "Guest portal"); the portal is `/portal/<token>`. The link email's job carries the token encrypted with `SECRETS_ENCRYPTION_KEY`, so neither the app's tables nor pg-boss's hold a working link. Without the key, staff can still copy a link. Thirty bad links from one IP address in 15 minutes lock that address out of the portal for 15 minutes.
+
 - New tables:
   - **GuestGroup**, belonging to a campus. It holds:
     - the group name

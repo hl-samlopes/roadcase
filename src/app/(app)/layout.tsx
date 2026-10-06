@@ -27,7 +27,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     { href: "/tickets", label: "Service tickets" },
     { href: "/service-log", label: "Service log" },
     { href: "/checkouts", label: "Check-outs" },
-    { href: "/portal", label: "Guest portal" },
+    { href: "/guests", label: "Guest portal" },
     ...(isAnyAdmin(user) ? [{ href: "/settings", label: "Settings" }] : []),
   ];
 

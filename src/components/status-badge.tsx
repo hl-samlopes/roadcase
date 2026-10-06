@@ -1,5 +1,6 @@
 import type { CheckoutStatus, TicketStatus } from "@/generated/prisma/enums.ts";
-import { checkoutStatusLabels, ticketStatusLabels } from "@/lib/labels";
+import type { PortalLinkStatus } from "@/lib/authz/portal-policy";
+import { checkoutStatusLabels, portalLinkStatusLabels, ticketStatusLabels } from "@/lib/labels";
 
 /** Ticket status as text in an outlined badge; never color alone. */
 export function StatusBadge({ status }: { status: TicketStatus }) {
@@ -25,6 +26,19 @@ export function CheckoutStatusBadge({ status }: { status: CheckoutStatus }) {
       }`}
     >
       {checkoutStatusLabels[status]}
+    </span>
+  );
+}
+
+/** A guest group's portal link as text in an outlined badge; only a working link stands out. */
+export function PortalLinkBadge({ status }: { status: PortalLinkStatus | null }) {
+  return (
+    <span
+      className={`rounded-theme inline-block border px-1.5 whitespace-nowrap ${
+        status === "active" ? "border-accent text-text font-semibold" : "border-border text-muted"
+      }`}
+    >
+      {status ? portalLinkStatusLabels[status] : "No link yet"}
     </span>
   );
 }

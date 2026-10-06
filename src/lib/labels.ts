@@ -5,6 +5,7 @@ import type {
   ScopeType,
   TicketStatus,
 } from "@/generated/prisma/enums.ts";
+import type { PortalLinkStatus } from "@/lib/authz/portal-policy";
 
 export const levelLabels: Record<PermissionLevel, string> = {
   VIEWER: "Viewer",
@@ -74,3 +75,10 @@ export function assigneeLabel(ticket: {
       return null;
   }
 }
+
+export const portalLinkStatusLabels: Record<PortalLinkStatus, string> = {
+  active: "Link works",
+  revoked: "Link turned off",
+  expired: "Link expired",
+  archived: "Archived",
+};
