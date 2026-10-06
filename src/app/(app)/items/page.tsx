@@ -268,6 +268,16 @@ export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
             </table>
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            {homes.length > 0 ? (
+              <button
+                type="submit"
+                form="labels-form"
+                formAction="/items/bulk-edit"
+                className={buttonClass("secondary")}
+              >
+                Edit selected
+              </button>
+            ) : null}
             <button type="submit" form="labels-form" className={buttonClass("secondary")}>
               Print labels for selected
             </button>

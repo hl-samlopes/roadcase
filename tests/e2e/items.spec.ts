@@ -188,3 +188,28 @@ test("an editor logs routine service on an item without a ticket", async ({ brow
   await expect(viewer.getByRole("row", { name: /Cleaning/ })).toBeVisible();
   await expect(viewer.getByText("Log service without a ticket")).toHaveCount(0);
 });
+
+test("an editor changes several items at once", async ({ page }) => {
+  await signIn(page, accounts.admin);
+  await page.goto("/items?q=HSC-00005");
+  await page.getByLabel("Select HSC-000053 for labels").check();
+  await page.getByLabel("Select HSC-000054 for labels").check();
+  await page.getByRole("button", { name: "Edit selected" }).click();
+  await expect(page.getByRole("heading", { name: "Edit selected items" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "2 items" })).toBeVisible();
+
+  // Only the condition changes; category and home stay as they are.
+  await page.getByLabel("Condition").selectOption({ label: "Fair" });
+  await page.getByRole("button", { name: "Save changes to 2 items" }).click();
+  await expect(page.getByText("Done: Updated 2 items.")).toBeVisible();
+
+  for (const code of ["HSC-000053", "HSC-000054"]) {
+    await page.goto(`/items/scan?code=${code}`);
+    const detail = (label: string) =>
+      page
+        .locator("dt", { hasText: new RegExp(`^${label}$`) })
+        .locator("xpath=following-sibling::dd[1]");
+    await expect(detail("Condition")).toHaveText("Fair");
+    await expect(detail("Category")).toHaveText("Cabling");
+  }
+});
