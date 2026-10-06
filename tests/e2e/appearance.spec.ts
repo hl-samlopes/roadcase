@@ -73,7 +73,7 @@ test("text size scales body text and headings and persists", async ({ browser })
       .first()
       .evaluate((el) => getComputedStyle(el).fontSize);
 
-  expect(await bodySize()).toBe("12px");
+  expect(await bodySize()).toBe("14px");
   expect(await headingSize()).toBe("24px");
 
   await openUserMenu(page);

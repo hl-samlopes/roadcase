@@ -32,7 +32,7 @@ Light by default, with dark mode. All colors and fonts are CSS variables so an o
 
 Default tokens, light: bg `#F6F7F9`, surface `#FFFFFF`, text `#14181F`, muted `#566070`, border `#DDE1E8`, accent `#1B5FD1`, warn `#8A5A00`, bad `#B3361B`.
 Default tokens, dark: bg `#0F1319`, surface `#171C24`, text `#EDF0F5`, muted `#9AA5B5`, border `#2A313C`, accent `#6EA2FF`, warn `#F0B84A`, bad `#FF8A6B`.
-Fonts: headings Inter Bold 24px; body Krub 12px. Allowed alternates: Space Mono Bold + Plus Jakarta Sans; both headings and body must be sans serif.
+Fonts: headings Inter Bold 24px; body Krub 14px. Allowed alternates: Space Mono Bold + Plus Jakarta Sans; both headings and body must be sans serif.
 Layout: left sidebar nav (220px), table-first inventory list, item detail panel with barcode and service history. Corner radius is a token (`--radius`, default 6px); a square-corner variant (0) was also approved as an option.
 Reference mockups are in the design canvas (Concept A and A2).
 Rules: text contrast at least 4.5:1, status never by color alone (always a text label), real buttons and labels. The one exception to theme colors is barcodes, which always render black on white so scanners can read them.

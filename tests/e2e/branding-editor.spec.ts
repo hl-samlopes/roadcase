@@ -70,7 +70,7 @@ test("saved changes reach everyone and the signed-out sign-in page", async ({ br
   expect(await cssVariable(viewer, "--accent")).toBe("#7A1FA2");
   expect(await cssVariable(viewer, "--bg")).toBe("#FAF7F2");
   expect(await cssVariable(viewer, "--radius")).toBe("0px");
-  expect(await viewer.evaluate(() => getComputedStyle(document.body).fontSize)).toBe("13.8px");
+  expect(await viewer.evaluate(() => getComputedStyle(document.body).fontSize)).toBe("16.1px");
   const headingFont = await viewer
     .getByRole("heading", { name: "Inventory" })
     .evaluate((el) => getComputedStyle(el).fontFamily);
@@ -147,7 +147,7 @@ test("reset restores the Roadcase defaults for everyone", async ({ browser }) =>
   await expect(visitor).toHaveTitle("Inventory · Roadcase");
   expect(await cssVariable(visitor, "--bg")).toBe("#F6F7F9");
   expect(await cssVariable(visitor, "--radius")).toBe("6px");
-  expect(await visitor.evaluate(() => getComputedStyle(document.body).fontSize)).toBe("12px");
+  expect(await visitor.evaluate(() => getComputedStyle(document.body).fontSize)).toBe("14px");
 });
 
 test("only organization admins can open Appearance", async ({ page }) => {

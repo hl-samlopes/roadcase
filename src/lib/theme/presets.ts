@@ -61,7 +61,7 @@ export const textScaleOptions = [
 
 export const DEFAULT_TEXT_SCALE = 100;
 
-/** Body text size in px at a given scale (12px at 100%). */
+/** Body text size in px at a given scale (14px at 100%). */
 export function bodyTextPx(scale: number): number {
-  return Math.round(12 * scale) / 100;
+  return Math.round(14 * scale) / 100;
 }
