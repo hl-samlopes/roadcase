@@ -127,6 +127,8 @@ model Organization {
   serviceTickets   ServiceTicket[]
   serviceLogs      ServiceLog[]
   rfidTags         RfidTag[]
+  jobFailures      JobFailure[]
+  sentEmails       SentEmail[]
 }
 
 model Campus {
@@ -640,4 +642,44 @@ model SignInThrottle {
   updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
 
   @@index([updatedAt])
+}
+
+/// One failed attempt of a background job, shown to organization admins in
+/// Settings > Notifications. pg-boss keeps its own job state; this is the
+/// readable history.
+model JobFailure {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  /// Null for jobs that don't belong to one organization.
+  organizationId String?  @db.Uuid
+  queue          String
+  jobId          String   @db.Uuid
+  /// 1 for the first try, 2 for the first retry, and so on.
+  attempt        Int
+  /// False when this was the last attempt and the job gave up.
+  willRetry      Boolean
+  /// Short error message with credentials removed. Never secrets or message bodies.
+  error          String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+}
+
+/// Each email handed to the email service. The key comes from the job, so a
+/// retried job never sends the same email twice.
+model SentEmail {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  organizationId    String?  @db.Uuid
+  idempotencyKey    String   @unique
+  /// Stored lowercase.
+  toAddress         String
+  subject           String
+  /// The email service's id for the message, when it returns one.
+  providerMessageId String?
+  sentAt            DateTime @default(now()) @db.Timestamptz(3)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, sentAt])
 }
