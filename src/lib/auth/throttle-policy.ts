@@ -26,6 +26,17 @@ export const addressLimit: ThrottleLimit = {
   lockMs: 15 * MINUTE,
 };
 
+/**
+ * Guest portal links tried from one IP address that don't work: 30 in 15
+ * minutes locks that address out of the portal for 15 minutes, so tokens
+ * can't be guessed in bulk. Working links never count.
+ */
+export const portalAddressLimit: ThrottleLimit = {
+  maxFailures: 30,
+  windowMs: 15 * MINUTE,
+  lockMs: 15 * MINUTE,
+};
+
 export interface ThrottleState {
   failures: number;
   windowStartedAt: Date;
@@ -60,6 +71,10 @@ export function accountKey(organizationSlug: string, username: string): string {
 
 export function addressKey(ip: string): string {
   return `ip:${ip}`;
+}
+
+export function portalAddressKey(ip: string): string {
+  return `portal-ip:${ip}`;
 }
 
 /** The client address from proxy headers, or null when unknown. */

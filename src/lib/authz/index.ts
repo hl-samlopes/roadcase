@@ -5,3 +5,5 @@
 export * from "./policy";
 export * from "./session";
 export * from "./campuses";
+export * from "./portal-policy";
+export * from "./portal";

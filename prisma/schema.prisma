@@ -135,6 +135,8 @@ model Organization {
   checkouts                Checkout[]
   contractTemplateVersions ContractTemplateVersion[]
   contracts                Contract[]
+  guestGroups              GuestGroup[]
+  portalLinks              PortalLink[]
 }
 
 model Campus {
@@ -159,6 +161,7 @@ model Campus {
   slackWebhooks            SlackWebhook[]
   checkouts                Checkout[]
   contractTemplateVersions ContractTemplateVersion[]
+  guestGroups              GuestGroup[]
 
   @@unique([organizationId, code])
   @@unique([id, organizationId])
@@ -267,6 +270,9 @@ model User {
   contractTemplateVersionsSaved ContractTemplateVersion[]
   contractsPrepared             Contract[]
   signaturesCollected           ContractSignature[]       @relation("SignatureCollectedBy")
+  guestGroupsContact            GuestGroup[]              @relation("GuestGroupStaffContact")
+  guestGroupsCreated            GuestGroup[]              @relation("GuestGroupCreatedBy")
+  portalLinksCreated            PortalLink[]
 
   @@unique([organizationId, username])
   @@unique([organizationId, email])
@@ -770,6 +776,8 @@ model Checkout {
   dateOut        DateTime       @db.Date
   dateDue        DateTime       @db.Date
   notes          String?
+  /// The guest group this check-out is for, when it was made from one.
+  guestGroupId   String?        @db.Uuid
   createdById    String?        @db.Uuid
   cancelledAt    DateTime?      @db.Timestamptz(3)
   /// When the last item came back.
@@ -781,12 +789,14 @@ model Checkout {
   campus       Campus          @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
   staffRep     User?           @relation("CheckoutStaffRep", fields: [staffRepId], references: [id], onDelete: SetNull)
   createdBy    User?           @relation("CheckoutCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  guestGroup   GuestGroup?     @relation(fields: [guestGroupId], references: [id], onDelete: SetNull)
   lines        CheckoutLine[]
   contracts    Contract[]
   tickets      ServiceTicket[]
 
   @@unique([organizationId, number])
   @@index([campusId, status])
+  @@index([guestGroupId])
 }
 
 /// One item on a check-out, with its optional fee and return details.
@@ -904,4 +914,66 @@ model ContractSignature {
   collectedBy User?    @relation("SignatureCollectedBy", fields: [collectedById], references: [id], onDelete: SetNull)
 
   @@unique([contractId, role])
+}
+
+// ---------------------------------------------------------------------------
+// Guest portal
+// ---------------------------------------------------------------------------
+
+/// A guest group visiting one campus. Staff send it a portal link; later
+/// phases add its equipment requests and band setup.
+model GuestGroup {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  campusId       String    @db.Uuid
+  name           String
+  repName        String
+  /// Stored lowercase. Portal links are emailed here.
+  repEmail       String
+  repPhone       String
+  /// Calendar dates (no time of day). Portal links expire 14 days after departure.
+  arrivalDate    DateTime  @db.Date
+  departureDate  DateTime  @db.Date
+  /// The staff member the group deals with; shown in the portal.
+  staffContactId String?   @db.Uuid
+  notes          String?
+  /// Archived groups keep their history, and their portal links stop working.
+  archivedAt     DateTime? @db.Timestamptz(3)
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  campus       Campus       @relation(fields: [campusId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  staffContact User?        @relation("GuestGroupStaffContact", fields: [staffContactId], references: [id], onDelete: SetNull)
+  createdBy    User?        @relation("GuestGroupCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  portalLinks  PortalLink[]
+  checkouts    Checkout[]
+
+  @@index([campusId, departureDate])
+}
+
+/// A guest group's portal link, /portal/<token>. Only the token's SHA-256 is
+/// stored, so the database never holds a working link. A group has at most
+/// one unrevoked link (a partial unique index); making a new one revokes the
+/// old. Expiry follows the group's departure date, so it isn't stored.
+model PortalLink {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  guestGroupId   String    @db.Uuid
+  /// Hex SHA-256 of the token. Never store or log the token itself.
+  tokenHash      String    @unique
+  /// The address it was emailed to, or null if staff copied it instead.
+  sentTo         String?
+  revokedAt      DateTime? @db.Timestamptz(3)
+  /// Updated at most every few minutes as the group opens the portal.
+  lastUsedAt     DateTime? @db.Timestamptz(3)
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  guestGroup   GuestGroup   @relation(fields: [guestGroupId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([guestGroupId, createdAt])
 }
