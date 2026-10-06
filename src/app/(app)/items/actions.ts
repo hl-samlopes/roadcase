@@ -311,3 +311,71 @@ export async function setPrimaryPhotoAction(
   revalidatePath(`/items/${item.id}`);
   return { success: "Main photo updated." };
 }
+
+const serviceSchema = z.object({
+  serviceDate: z.iso.date("Enter the service date."),
+  serviceType: z.string().trim().min(1, "Enter the type of service.").max(80),
+  cost: z
+    .string()
+    .trim()
+    .transform((value) => value.replace(/[$,]/g, ""))
+    .refine(
+      (value) => value === "" || /^\d{1,10}(\.\d{1,2})?$/.test(value),
+      "Enter an amount such as 45.00.",
+    )
+    .transform((value) => value || null),
+  notes: z
+    .string()
+    .trim()
+    .max(5000)
+    .transform((value) => value || null),
+});
+
+/** Records service on an item directly, without a ticket (routine maintenance, inspections). */
+export async function logServiceAction(
+  itemId: string,
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const actor = await requireUser();
+  const item = await getItem(actor, itemId);
+  if (!item || !can(actor, "serviceLog:manage", item)) return NOT_ALLOWED;
+  const parsed = serviceSchema.safeParse({ cost: "", notes: "", ...formObject(formData) });
+  if (!parsed.success) return invalid(parsed.error);
+
+  const upload = await readUpload(formData, "file");
+  if (upload && !upload.ok) {
+    return { error: PLEASE_FIX, fieldErrors: { file: [upload.error] } };
+  }
+  const stored = upload ? await storeUpload(actor.organizationId, upload) : null;
+  try {
+    await db.$transaction(async (tx) => {
+      const log = await tx.serviceLog.create({
+        data: {
+          organizationId: item.organizationId,
+          campusId: item.campusId,
+          locationId: item.locationId,
+          departmentId: item.departmentId,
+          itemId: item.id,
+          serviceDate: new Date(`${parsed.data.serviceDate}T00:00:00Z`),
+          serviceType: parsed.data.serviceType,
+          cost: parsed.data.cost,
+          notes: parsed.data.notes,
+          createdById: actor.id,
+        },
+        select: { id: true },
+      });
+      if (stored) {
+        await tx.attachment.create({
+          data: { ...stored, serviceLogId: log.id, uploadedById: actor.id },
+        });
+      }
+    });
+  } catch (error) {
+    if (stored) await deleteObject(stored.storageKey).catch(() => {});
+    throw error;
+  }
+  revalidatePath(`/items/${item.id}`);
+  revalidatePath("/service-log");
+  return { success: `Logged ${parsed.data.serviceType}.` };
+}

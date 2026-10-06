@@ -4,14 +4,21 @@ import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { Barcode } from "@/components/barcode";
 import { StatusBadge } from "@/components/status-badge";
-import { buttonClass, Card, PageHeader, TextField } from "@/components/ui";
+import { LocalDateField } from "@/components/local-date-field";
+import { buttonClass, Card, PageHeader, TextAreaField, TextField } from "@/components/ui";
 import { can, requireUser } from "@/lib/authz";
 import { attachmentUrl } from "@/lib/data/attachments";
 import { activeFields, getItem } from "@/lib/data/items";
 import { acceptedUploadTypes } from "@/lib/files";
 import { formatBytes, formatDate, formatMoney } from "@/lib/format";
 import { formatCustomFieldValue } from "@/lib/items/custom-fields";
-import { deleteAttachmentAction, setPrimaryPhotoAction, uploadAttachmentAction } from "../actions";
+import { serviceTypeSuggestions } from "@/lib/labels";
+import {
+  deleteAttachmentAction,
+  logServiceAction,
+  setPrimaryPhotoAction,
+  uploadAttachmentAction,
+} from "../actions";
 
 export const metadata: Metadata = { title: "Item" };
 
@@ -24,6 +31,7 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
   const { created, saved, ticket: openedTicket } = await searchParams;
   const editable = can(user, "item:update", item);
   const canReport = can(user, "ticket:submit", item);
+  const canLogService = can(user, "serviceLog:manage", item);
   // Closed tickets keep the home they had, so check each one.
   const tickets = item.serviceTickets.filter((ticket) => can(user, "ticket:read", ticket));
   const fields = await activeFields(user.organizationId);
@@ -220,6 +228,68 @@ export default async function ItemPage({ params, searchParams }: PageProps<"/ite
           </Card>
 
           <Card title="Service history">
+            {canLogService ? (
+              <details className="border-border rounded-theme mb-3 border p-3">
+                <summary className="text-accent cursor-pointer font-semibold">
+                  Log service without a ticket
+                </summary>
+                <ActionForm
+                  action={logServiceAction.bind(null, item.id)}
+                  submitLabel="Log service"
+                  pendingLabel="Saving…"
+                  fieldLabels={{
+                    serviceDate: "Service date",
+                    serviceType: "Service type",
+                    cost: "Cost",
+                    notes: "Notes",
+                    file: "Receipt or report",
+                  }}
+                  className="mt-3 flex flex-col gap-3"
+                >
+                  <LocalDateField
+                    label="Service date"
+                    name="serviceDate"
+                    id="log-service-date"
+                    required
+                  />
+                  <TextField
+                    label="Service type"
+                    name="serviceType"
+                    id="log-service-type"
+                    list="log-service-types"
+                    maxLength={80}
+                    defaultValue="Inspection"
+                    required
+                  />
+                  <datalist id="log-service-types">
+                    {serviceTypeSuggestions.map((type) => (
+                      <option key={type} value={type} />
+                    ))}
+                  </datalist>
+                  <TextField
+                    label="Cost"
+                    name="cost"
+                    id="log-service-cost"
+                    inputMode="decimal"
+                    hint="In dollars. Optional."
+                  />
+                  <TextAreaField
+                    label="Notes"
+                    name="notes"
+                    id="log-service-notes"
+                    maxLength={5000}
+                  />
+                  <TextField
+                    label="Receipt or report"
+                    name="file"
+                    id="log-service-file"
+                    type="file"
+                    accept={acceptedUploadTypes}
+                    hint="Optional."
+                  />
+                </ActionForm>
+              </details>
+            ) : null}
             {item.serviceLogs.length === 0 ? (
               <p className="text-muted">No service recorded yet.</p>
             ) : (

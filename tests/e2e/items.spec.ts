@@ -164,3 +164,27 @@ test("an unknown code shows a message instead of an item", async ({ page }) => {
     `No item you can see has the code ${items.hne.code}`,
   );
 });
+
+test("an editor logs routine service on an item without a ticket", async ({ browser }) => {
+  // The last bulk cable at the HSC warehouse: no other test totals its service costs.
+  const cable = "/items/scan?code=HSC-000055";
+  const editor = await (await browser.newContext()).newPage();
+  await signIn(editor, accounts.admin);
+  await editor.goto(cable);
+  await editor.getByText("Log service without a ticket").click();
+  await editor.getByLabel("Service type").fill("Cleaning");
+  await editor.getByLabel("Cost").fill("12");
+  await editor.getByLabel("Notes", { exact: true }).fill("Cleaned the connectors.");
+  await editor.getByRole("button", { name: "Log service", exact: true }).click();
+  await expect(editor.getByText("Done: Logged Cleaning.")).toBeVisible();
+  await expect(
+    editor.getByRole("row", { name: /Cleaning \$12\.00 Cleaned the connectors\./ }),
+  ).toBeVisible();
+
+  // Viewers see the history but can't add to it.
+  const viewer = await (await browser.newContext()).newPage();
+  await signIn(viewer, accounts.preferences);
+  await viewer.goto(cable);
+  await expect(viewer.getByRole("row", { name: /Cleaning/ })).toBeVisible();
+  await expect(viewer.getByText("Log service without a ticket")).toHaveCount(0);
+});
