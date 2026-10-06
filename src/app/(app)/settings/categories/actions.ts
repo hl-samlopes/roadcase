@@ -89,6 +89,39 @@ export async function renameCategoryAction(
   return { success: `Saved ${parsed.data.name}.` };
 }
 
+const portalSchema = z.object({
+  showInPortal: z.literal("on").optional(),
+  portalDescription: z
+    .string()
+    .trim()
+    .max(1000)
+    .transform((value) => value || null),
+});
+
+/** Whether guest groups see the category in the portal catalog, and what it says to them. */
+export async function savePortalCategoryAction(
+  id: string,
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const actor = await authorize();
+  const category = actor && (await findCategory(actor, id));
+  if (!category) return NOT_ALLOWED;
+  const parsed = portalSchema.safeParse({ portalDescription: "", ...formObject(formData) });
+  if (!parsed.success) return invalid(parsed.error);
+  const showInPortal = parsed.data.showInPortal === "on";
+  await db.category.update({
+    where: { id: category.id },
+    data: { showInPortal, portalDescription: parsed.data.portalDescription },
+  });
+  refresh();
+  return {
+    success: showInPortal
+      ? `Guests now see ${category.name} in the portal.`
+      : `${category.name} is hidden from guests.`,
+  };
+}
+
 export async function moveCategoryAction(
   id: string,
   direction: "up" | "down",

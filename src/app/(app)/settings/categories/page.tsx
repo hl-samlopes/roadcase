@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { CardHeaderWithAdd, EditableRow } from "@/components/editable-rows";
-import { PageHeader, TextField } from "@/components/ui";
+import { CheckboxField, PageHeader, TextAreaField, TextField } from "@/components/ui";
 import { can, requireUser } from "@/lib/authz";
 import { db } from "@/lib/db";
 import {
@@ -16,6 +16,7 @@ import {
   renameSubcategoryAction,
   restoreCategoryAction,
   restoreSubcategoryAction,
+  savePortalCategoryAction,
 } from "./actions";
 
 export const metadata: Metadata = { title: "Categories" };
@@ -24,7 +25,7 @@ const inline = "flex flex-col items-start gap-1";
 const cell = "flex min-w-0 flex-wrap items-center gap-2 p-2";
 const th = "text-muted border-border border-b p-2 font-semibold";
 const chip = "border-border rounded-full border px-2 whitespace-nowrap";
-const COLUMNS = "minmax(140px,1.2fr) minmax(200px,3fr) 64px 96px 96px";
+const COLUMNS = "minmax(140px,1.2fr) minmax(200px,3fr) 64px 110px 96px 96px";
 
 export default async function CategoriesPage() {
   const actor = await requireUser();
@@ -97,6 +98,9 @@ export default async function CategoriesPage() {
                 Items
               </div>
               <div role="columnheader" className={th}>
+                Guest portal
+              </div>
+              <div role="columnheader" className={th}>
                 Status
               </div>
               <div role="columnheader" className={th}>
@@ -138,6 +142,10 @@ export default async function CategoriesPage() {
                         {category._count.items}
                       </div>
                       <div role="cell" className={cell}>
+                        <span className="text-muted md:hidden">Guest portal:</span>
+                        {category.showInPortal && !category.archivedAt ? "Shown" : "Hidden"}
+                      </div>
+                      <div role="cell" className={cell}>
                         <span
                           className={`border-border rounded-theme border px-1.5 ${category.archivedAt ? "text-muted border-dashed" : ""}`}
                         >
@@ -162,6 +170,32 @@ export default async function CategoriesPage() {
                           defaultValue={category.name}
                           maxLength={80}
                           required
+                        />
+                      </ActionForm>
+
+                      <ActionForm
+                        action={savePortalCategoryAction.bind(null, category.id)}
+                        submitLabel={`Save guest portal settings for ${category.name}`}
+                        variant="secondary"
+                        resetOnSuccess={false}
+                        fieldLabels={{ portalDescription: "Description for guests" }}
+                        className="flex flex-col gap-2"
+                      >
+                        <CheckboxField
+                          label="Show in guest portal"
+                          name="showInPortal"
+                          id={`category-portal-${category.id}`}
+                          defaultChecked={category.showInPortal}
+                          hint="Guest groups can request this category's items that are in a condition that can be checked out, at their campus."
+                        />
+                        <TextAreaField
+                          label="Description for guests"
+                          name="portalDescription"
+                          id={`category-portal-description-${category.id}`}
+                          defaultValue={category.portalDescription ?? ""}
+                          maxLength={1000}
+                          rows={2}
+                          hint="Optional. Shown above the category in the portal."
                         />
                       </ActionForm>
 
