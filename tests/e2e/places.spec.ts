@@ -7,36 +7,48 @@ test("an organization admin adds a location and links a new department to it", a
   await page.goto("/settings");
   await page.getByRole("link", { name: "Locations and departments" }).click();
 
-  const hsc = page.locator("section", {
-    has: page.getByRole("heading", { name: "Hume SoCal (HSC)" }),
-  });
-  await hsc.getByLabel("Name").last().fill("Lakeside Pavilion");
-  await hsc.getByLabel("Short code").last().fill("lp");
-  await hsc.getByRole("button", { name: "Add location at HSC" }).click();
+  const locations = page.getByRole("region", { name: "Locations" });
+  await locations.getByRole("button", { name: "Add location" }).click();
+  await locations.getByLabel("Campus", { exact: true }).selectOption({ label: "Hume SoCal (HSC)" });
+  await locations.getByLabel("Name", { exact: true }).fill("Lakeside Pavilion");
+  await locations.getByLabel("Short code", { exact: true }).fill("lp");
+  await locations.getByRole("button", { name: "Add location" }).last().click();
   await expect(page.getByText("Added Lakeside Pavilion to HSC.")).toBeVisible();
 
-  await page.locator("#new-department-name").fill("Food Service");
-  await page.getByRole("button", { name: "Add department" }).click();
-  await expect(page.getByText("Added Food Service.")).toBeVisible();
+  // Filtering by campus shows only that campus's locations, without the Campus column.
+  await locations.getByRole("link", { name: /^Hume SoCal \(HSC\)/ }).click();
+  const table = page.getByRole("table", { name: "Locations" });
+  await expect(table.getByText("Lakeside Pavilion", { exact: true })).toBeVisible();
+  await expect(table.getByText("Meadow Ranch", { exact: true })).toHaveCount(0);
+  await expect(table.getByRole("columnheader", { name: "Campus" })).toHaveCount(0);
 
-  const food = page
-    .getByRole("listitem")
-    .filter({ hasText: "Locations where Food Service keeps equipment" });
-  await food.getByLabel("Lakeside Pavilion (HSC)").check();
-  await food.getByRole("button", { name: "Save Food Service locations" }).click();
-  await expect(page.getByText("Updated where Food Service keeps equipment.")).toBeVisible();
-  await expect(food.getByLabel("Lakeside Pavilion (HSC)")).toBeChecked();
+  // A new department can be linked to locations as it's added.
+  const departments = page.getByRole("region", { name: "Departments" });
+  await departments.getByRole("button", { name: "Add department" }).click();
+  await departments.getByLabel("Name", { exact: true }).fill("Food Service");
+  await departments.getByLabel("Lakeside Pavilion").check();
+  await departments.getByRole("button", { name: "Add department" }).last().click();
+  await expect(page.getByText("Added Food Service.")).toBeVisible();
+  const food = page.getByRole("row", { name: /Food Service/ });
+  await expect(food).toContainText("Lakeside Pavilion · HSC");
+
+  // Editing in place: rename, and the row updates.
+  await departments.getByRole("button", { name: "Edit Food Service" }).click();
+  await departments.getByLabel("Name").first().fill("Food Services");
+  await departments.getByRole("button", { name: "Save Food Service" }).click();
+  await expect(page.getByText("Done: Saved Food Services.")).toBeVisible();
 });
 
 test("a department can't drop a location that still holds its items", async ({ page }) => {
   await signIn(page, accounts.admin);
   await page.goto("/settings/locations");
-  const production = page
-    .getByRole("listitem")
-    .filter({ hasText: "Locations where Production keeps equipment" });
-  await production.getByLabel("Meadow Ranch (HLK)").uncheck();
-  await production.getByRole("button", { name: "Save Production locations" }).click();
-  await expect(production.getByRole("alert")).toContainText("Meadow Ranch still has");
+  const departments = page.getByRole("region", { name: "Departments" });
+  await departments.getByRole("button", { name: "Edit Production" }).click();
+  await departments.getByLabel("Meadow Ranch").uncheck();
+  await departments.getByRole("button", { name: "Save Production" }).click();
+  await expect(
+    departments.getByRole("alert").filter({ hasText: "Meadow Ranch still has" }),
+  ).toBeVisible();
 });
 
 test("editors can't open location settings", async ({ page }) => {

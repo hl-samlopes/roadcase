@@ -40,14 +40,22 @@ async function manageableLocation(actor: CurrentUser, id: string) {
     : null;
 }
 
+/** Adds a location to the campus chosen in the form (one the actor manages). */
 export async function createLocationAction(
-  campusId: string,
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
   const actor = await requireUser();
-  const campus = (await manageableCampuses(actor)).find((c) => c.id === campusId);
-  if (!campus) return NOT_ALLOWED;
+  const campusId = String(formData.get("campusId") ?? "");
+  const campuses = await manageableCampuses(actor);
+  if (campuses.length === 0) return NOT_ALLOWED;
+  const campus = campuses.find((c) => c.id === campusId);
+  if (!campus) {
+    return {
+      error: "Please fix the highlighted fields.",
+      fieldErrors: { campusId: ["Choose a campus."] },
+    };
+  }
   const parsed = locationSchema.safeParse(formObject(formData));
   if (!parsed.success) return invalid(parsed.error);
 
@@ -120,9 +128,15 @@ export async function createDepartmentAction(
   if (!canManageDepartments(actor)) return NOT_ALLOWED;
   const parsed = departmentSchema.safeParse(formObject(formData));
   if (!parsed.success) return invalid(parsed.error);
+  const wanted = await chosenLocations(actor, formData);
+  if (!wanted) return { error: "Choose locations from the list." };
   try {
     await db.department.create({
-      data: { organizationId: actor.organizationId, name: parsed.data.name },
+      data: {
+        organizationId: actor.organizationId,
+        name: parsed.data.name,
+        locations: { create: [...wanted].map((locationId) => ({ locationId })) },
+      },
     });
   } catch (error) {
     if (isUniqueViolation(error)) {
@@ -137,34 +151,20 @@ export async function createDepartmentAction(
   return { success: `Added ${parsed.data.name}.` };
 }
 
+/** The ticked `locationId` boxes, if every one is a location in the organization. */
+async function chosenLocations(actor: CurrentUser, formData: FormData) {
+  const chosen = z.array(z.uuid()).safeParse(formData.getAll("locationId"));
+  if (!chosen.success) return null;
+  const wanted = new Set(chosen.data);
+  const found = await db.location.count({
+    where: { organizationId: actor.organizationId, id: { in: [...wanted] } },
+  });
+  return found === wanted.size ? wanted : null;
+}
+
 async function manageableDepartment(actor: CurrentUser, id: string) {
   if (!canManageDepartments(actor) || !z.uuid().safeParse(id).success) return null;
   return db.department.findFirst({ where: { id, organizationId: actor.organizationId } });
-}
-
-export async function updateDepartmentAction(
-  id: string,
-  _state: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const actor = await requireUser();
-  const department = await manageableDepartment(actor, id);
-  if (!department) return NOT_ALLOWED;
-  const parsed = departmentSchema.safeParse(formObject(formData));
-  if (!parsed.success) return invalid(parsed.error);
-  try {
-    await db.department.update({ where: { id: department.id }, data: parsed.data });
-  } catch (error) {
-    if (isUniqueViolation(error)) {
-      return {
-        error: "Please fix the highlighted fields.",
-        fieldErrors: { name: ["A department with this name already exists."] },
-      };
-    }
-    throw error;
-  }
-  refresh();
-  return { success: "Saved." };
 }
 
 export async function setDepartmentArchivedAction(
@@ -187,10 +187,11 @@ export async function setDepartmentArchivedAction(
 }
 
 /**
- * Sets the locations a department keeps equipment in. A link can't be removed
- * while items still live there with that department.
+ * Saves a department's name and the locations it keeps equipment in, together.
+ * A location can't be unlinked while items still live there with that
+ * department.
  */
-export async function setDepartmentLocationsAction(
+export async function saveDepartmentAction(
   id: string,
   _state: FormState,
   formData: FormData,
@@ -198,23 +199,15 @@ export async function setDepartmentLocationsAction(
   const actor = await requireUser();
   const department = await manageableDepartment(actor, id);
   if (!department) return NOT_ALLOWED;
+  const parsed = departmentSchema.safeParse(formObject(formData));
+  if (!parsed.success) return invalid(parsed.error);
+  const wanted = await chosenLocations(actor, formData);
+  if (!wanted) return { error: "Choose locations from the list." };
 
-  const chosen = z.array(z.uuid()).safeParse(formData.getAll("locationId"));
-  if (!chosen.success) return { error: "Choose locations from the list." };
-  const wanted = new Set(chosen.data);
-
-  const [locations, current] = await Promise.all([
-    db.location.findMany({
-      where: { organizationId: actor.organizationId, id: { in: [...wanted] } },
-      select: { id: true },
-    }),
-    db.departmentLocation.findMany({
-      where: { departmentId: department.id },
-      select: { locationId: true, location: { select: { name: true } } },
-    }),
-  ]);
-  if (locations.length !== wanted.size) return { error: "Choose locations from the list." };
-
+  const current = await db.departmentLocation.findMany({
+    where: { departmentId: department.id },
+    select: { locationId: true, location: { select: { name: true } } },
+  });
   const toRemove = current.filter((link) => !wanted.has(link.locationId));
   for (const link of toRemove) {
     const count = await db.item.count({
@@ -227,19 +220,30 @@ export async function setDepartmentLocationsAction(
     }
   }
   const existing = new Set(current.map((link) => link.locationId));
-  await db.$transaction([
-    db.departmentLocation.deleteMany({
-      where: {
-        departmentId: department.id,
-        locationId: { in: toRemove.map((link) => link.locationId) },
-      },
-    }),
-    db.departmentLocation.createMany({
-      data: [...wanted]
-        .filter((locationId) => !existing.has(locationId))
-        .map((locationId) => ({ departmentId: department.id, locationId })),
-    }),
-  ]);
+  try {
+    await db.$transaction([
+      db.department.update({ where: { id: department.id }, data: { name: parsed.data.name } }),
+      db.departmentLocation.deleteMany({
+        where: {
+          departmentId: department.id,
+          locationId: { in: toRemove.map((link) => link.locationId) },
+        },
+      }),
+      db.departmentLocation.createMany({
+        data: [...wanted]
+          .filter((locationId) => !existing.has(locationId))
+          .map((locationId) => ({ departmentId: department.id, locationId })),
+      }),
+    ]);
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return {
+        error: "Please fix the highlighted fields.",
+        fieldErrors: { name: ["A department with this name already exists."] },
+      };
+    }
+    throw error;
+  }
   refresh();
-  return { success: `Updated where ${department.name} keeps equipment.` };
+  return { success: `Saved ${parsed.data.name}.` };
 }
