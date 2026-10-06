@@ -32,6 +32,12 @@ const sections = [
     organizationAdminOnly: true,
   },
   {
+    href: "/settings/notifications",
+    title: "Notifications",
+    description: "Test email delivery and see background jobs that failed.",
+    organizationAdminOnly: true,
+  },
+  {
     href: "/settings/appearance",
     title: "Appearance",
     description: "Organization colors, fonts, logos and sign-in page.",
