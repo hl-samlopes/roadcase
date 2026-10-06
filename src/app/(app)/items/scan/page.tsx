@@ -34,9 +34,9 @@ export default async function ScanPage({ searchParams }: PageProps<"/items/scan"
         ) : null}
         <form method="get" className="flex flex-wrap items-end gap-2">
           <TextField
-            label="Scan or enter an item code"
+            label="Item code"
             name="code"
-            id="scan-code"
+            id="find-code"
             autoFocus
             autoComplete="off"
             autoCapitalize="characters"

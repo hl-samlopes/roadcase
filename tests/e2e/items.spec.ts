@@ -41,9 +41,11 @@ test("an editor adds an item with a photo and custom field, then finds it by sca
   await expect(photo).toBeVisible();
   expect(await photo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
 
-  // A barcode scanner types the code and presses Enter.
-  await page.goto("/items");
-  await page.getByLabel("Scan or enter an item code").fill(code!.toLowerCase());
+  // A barcode scanner types the code and presses Enter, from any page; "/" focuses the field.
+  await page.goto("/service-log");
+  await page.keyboard.press("/");
+  await expect(page.getByLabel("Scan or enter an item code")).toBeFocused();
+  await page.keyboard.type(code!.toLowerCase());
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/items\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name: "Shure SM58" })).toBeVisible();

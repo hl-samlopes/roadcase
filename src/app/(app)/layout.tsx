@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CampusSwitcher } from "@/components/shell/campus-switcher";
+import { ScanBox } from "@/components/shell/scan-box";
 import { SidebarNav, type NavItem } from "@/components/shell/sidebar-nav";
 import { UserMenu } from "@/components/shell/user-menu";
 import { isAnyAdmin, requireUser } from "@/lib/authz";
@@ -66,8 +67,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         <SidebarNav items={nav} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="border-border bg-surface flex flex-wrap print:hidden items-center justify-between gap-2 border-b px-4 py-2">
+        <header className="border-border bg-surface flex flex-wrap print:hidden items-center gap-2 border-b px-4 py-2">
           <CampusSwitcher campuses={campuses} active={active} />
+          {/* Its own full-width row on phones; between the campus and account menus on wider screens. */}
+          <ScanBox className="order-last w-full md:order-none md:w-auto md:max-w-md md:flex-1" />
           <div className="ml-auto">
             <UserMenu displayName={user.displayName} username={user.username} />
           </div>

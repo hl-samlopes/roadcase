@@ -80,91 +80,73 @@ export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
         </div>
       </PageHeader>
 
-      <div className="mb-4 flex flex-col gap-3">
-        {/* Barcode scanners type the code and press Enter, which submits this form. */}
-        <form action="/items/scan" method="get" className="flex flex-wrap items-end gap-2">
-          <TextField
-            label="Scan or enter an item code"
-            name="code"
-            id="scan-code"
-            autoComplete="off"
-            autoCapitalize="characters"
-            spellCheck={false}
-            placeholder="HNE-000123"
-          />
-          <button type="submit" className={buttonClass("secondary")}>
-            Open item
-          </button>
-        </form>
-
-        {/* Keyed on the filters so its fields reset when they change (e.g. Clear filters). */}
-        <form
-          key={JSON.stringify([params.q, params.category, params.location, params.condition])}
-          method="get"
-          className="rounded-theme border-border bg-surface flex flex-wrap items-end gap-3 border p-3"
+      {/* Keyed on the filters so its fields reset when they change (e.g. Clear filters). */}
+      <form
+        key={JSON.stringify([params.q, params.category, params.location, params.condition])}
+        method="get"
+        className="rounded-theme border-border bg-surface mb-4 flex flex-wrap items-end gap-3 border p-3"
+      >
+        <TextField
+          label="Search"
+          name="q"
+          id="filter-q"
+          type="search"
+          defaultValue={params.q ?? ""}
+          hint="Name, code or notes"
+        />
+        <SelectField
+          label="Category"
+          name="category"
+          id="filter-category"
+          defaultValue={params.category ?? ""}
         >
-          <TextField
-            label="Search"
-            name="q"
-            id="filter-q"
-            type="search"
-            defaultValue={params.q ?? ""}
-            hint="Name, code or notes"
-          />
-          <SelectField
-            label="Category"
-            name="category"
-            id="filter-category"
-            defaultValue={params.category ?? ""}
+          <option value="">All categories</option>
+          {filters.categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </SelectField>
+        <SelectField
+          label="Location"
+          name="location"
+          id="filter-location"
+          defaultValue={params.location ?? ""}
+        >
+          <option value="">All locations</option>
+          {filters.locations.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name} ({l.campus.code})
+            </option>
+          ))}
+        </SelectField>
+        <SelectField
+          label="Condition"
+          name="condition"
+          id="filter-condition"
+          defaultValue={params.condition ?? ""}
+        >
+          <option value="">All conditions</option>
+          {filters.conditions.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
+            </option>
+          ))}
+        </SelectField>
+        {params.sort ? <input type="hidden" name="sort" value={params.sort} /> : null}
+        {params.dir ? <input type="hidden" name="dir" value={params.dir} /> : null}
+        <button type="submit" className={buttonClass("secondary")}>
+          Apply filters
+        </button>
+        {filtered ? (
+          <Link
+            href={listHref({}, { sort: params.sort, dir: params.dir })}
+            className="text-accent self-center hover:underline"
           >
-            <option value="">All categories</option>
-            {filters.categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </SelectField>
-          <SelectField
-            label="Location"
-            name="location"
-            id="filter-location"
-            defaultValue={params.location ?? ""}
-          >
-            <option value="">All locations</option>
-            {filters.locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name} ({l.campus.code})
-              </option>
-            ))}
-          </SelectField>
-          <SelectField
-            label="Condition"
-            name="condition"
-            id="filter-condition"
-            defaultValue={params.condition ?? ""}
-          >
-            <option value="">All conditions</option>
-            {filters.conditions.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </SelectField>
-          {params.sort ? <input type="hidden" name="sort" value={params.sort} /> : null}
-          {params.dir ? <input type="hidden" name="dir" value={params.dir} /> : null}
-          <button type="submit" className={buttonClass("secondary")}>
-            Apply filters
-          </button>
-          {filtered ? (
-            <Link
-              href={listHref({}, { sort: params.sort, dir: params.dir })}
-              className="text-accent self-center hover:underline"
-            >
-              Clear filters
-            </Link>
-          ) : null}
-        </form>
-      </div>
+            Clear filters
+          </Link>
+        ) : null}
+      </form>
 
       <p className="text-muted mb-2" role="status">
         {total > 0
