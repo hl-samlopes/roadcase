@@ -43,6 +43,8 @@ Rules: text contrast at least 4.5:1, status never by color alone (always a text 
 - Seed script creates the organization, campuses (HLK, HNE, HSC), an admin user, and default categories and item conditions only. No fake inventory. It must stay safe to rerun without undoing edits made in the app: it adds the admin only when the organization has no active organization-wide admin, and default categories and conditions only when the organization has none.
 - Server actions validate input with zod and call the authz layer first.
 - Never log passwords, tokens or signature images.
+- Secrets kept in the database (Slack webhook URLs, later MaintainX keys) are encrypted with `src/lib/secrets.ts`, never shown again in full and never logged.
+- Notifications are queued inside the transaction that records the change (`queueTicketNotice`), and the worker checks permissions again with `can()` when it sends.
 - Ask before adding a new dependency that is not in the stack above.
 
 ## Commands

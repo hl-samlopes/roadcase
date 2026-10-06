@@ -18,8 +18,9 @@ npm run worker              # background jobs (email); run it in a second termin
 ```
 
 Email sent in development goes to Mailpit; read it at http://localhost:8025. Nothing is
-delivered to real inboxes. Settings > Notifications sends a test email and lists
-background jobs that failed.
+delivered to real inboxes. Settings > Notifications sends a test email, lists background
+jobs that failed, and connects Slack channels for ticket alerts. Saving a Slack webhook
+needs `SECRETS_ENCRYPTION_KEY` in `.env` (`openssl rand -base64 32`).
 
 The seed is safe to rerun: it only creates rows that are missing and never changes the
 admin password after the first run.

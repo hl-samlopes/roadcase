@@ -1,5 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
-import { E2E_BUCKET, E2E_DATABASE_URL } from "./tests/e2e/fixtures.ts";
+import {
+  E2E_BUCKET,
+  E2E_DATABASE_URL,
+  E2E_SECRETS_KEY,
+  FAKE_SLACK_URL,
+} from "./tests/e2e/fixtures.ts";
 
 // A dedicated dev server and database so tests never touch `npm run dev` data.
 const PORT = Number(process.env.E2E_PORT ?? 3100);
@@ -31,6 +36,9 @@ export default defineConfig({
       DEFAULT_ORGANIZATION_SLUG: "hume",
       S3_BUCKET: E2E_BUCKET,
       S3_PUBLIC_BASE_URL: `http://localhost:9000/${E2E_BUCKET}`,
+      // Saving Slack webhooks: the worker gets the same key (global setup).
+      SECRETS_ENCRYPTION_KEY: E2E_SECRETS_KEY,
+      SLACK_WEBHOOK_TEST_ORIGINS: FAKE_SLACK_URL,
     },
   },
 });

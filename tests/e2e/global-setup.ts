@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, openSync, writeSync } from "node:fs";
+import { createServer } from "node:http";
 import {
   CreateBucketCommand,
   DeleteObjectsCommand,
@@ -21,7 +22,10 @@ import {
   E2E_ADMIN_EMAIL,
   E2E_BUCKET,
   E2E_DATABASE_URL,
+  E2E_SECRETS_KEY,
+  FAKE_SLACK_URL,
   MAILPIT_URL,
+  notifyOrganization,
   existingTicket,
   ids,
   items,
@@ -78,11 +82,47 @@ export default async function globalSetup() {
       () => {},
     );
     await loadFixtures(prisma);
+    await loadNotifyOrganization(prisma);
   } finally {
     await prisma.$disconnect();
   }
 
-  return startWorker();
+  const stopSlack = await startFakeSlack();
+  const stopWorker = await startWorker();
+  return async () => {
+    await stopWorker();
+    await stopSlack();
+  };
+}
+
+/**
+ * Records what the worker posts to Slack webhooks. GET /__posts returns them
+ * as [{ path, body }]; a path containing "fail" answers 500 like a broken webhook.
+ */
+async function startFakeSlack() {
+  const posts: { path: string; body: unknown }[] = [];
+  const server = createServer((request, response) => {
+    if (request.method === "GET" && request.url === "/__posts") {
+      response.setHeader("content-type", "application/json");
+      response.end(JSON.stringify(posts));
+      return;
+    }
+    let raw = "";
+    request.on("data", (chunk: Buffer) => (raw += chunk.toString()));
+    request.on("end", () => {
+      const path = request.url ?? "/";
+      if (path.includes("fail")) {
+        response.statusCode = 500;
+        response.end("internal_error");
+        return;
+      }
+      posts.push({ path, body: JSON.parse(raw || "null") });
+      response.end("ok");
+    });
+  });
+  const { port } = new URL(FAKE_SLACK_URL);
+  await new Promise<void>((resolve) => server.listen(Number(port), resolve));
+  return () => new Promise<void>((resolve) => server.close(() => resolve()));
 }
 
 /**
@@ -107,6 +147,9 @@ async function startWorker() {
         JOBS_TEST_QUEUE: "1",
         EMAIL_PROVIDER: "mailpit",
         MAILPIT_URL,
+        APP_URL: "http://localhost:3100",
+        SECRETS_ENCRYPTION_KEY: E2E_SECRETS_KEY,
+        SLACK_WEBHOOK_TEST_ORIGINS: FAKE_SLACK_URL,
         S3_BUCKET: E2E_BUCKET,
         S3_PUBLIC_BASE_URL: `http://localhost:9000/${E2E_BUCKET}`,
       },
@@ -429,4 +472,73 @@ async function loadFixtures(prisma: PrismaClient) {
       },
     },
   });
+}
+
+/** Signal Camps: two campuses, one item, and people who should and shouldn't hear about it. */
+async function loadNotifyOrganization(prisma: PrismaClient) {
+  const o = notifyOrganization;
+  const org = await prisma.organization.create({
+    data: {
+      slug: o.slug,
+      name: o.name,
+      branding: { create: {} },
+      campuses: {
+        create: [
+          { id: o.north.id, code: o.north.code, name: o.north.name, itemSequence: 1 },
+          { id: o.south.id, code: o.south.code, name: o.south.name },
+        ],
+      },
+      categories: { create: { name: "Audio" } },
+      itemConditions: { create: { label: "Good", isDefault: true } },
+    },
+    include: { categories: true, itemConditions: true },
+  });
+  const organizationId = org.id;
+  await prisma.location.create({
+    data: { id: o.locationId, organizationId, campusId: o.north.id, name: "North Hall" },
+  });
+  await prisma.department.create({
+    data: {
+      id: o.departmentId,
+      organizationId,
+      name: "Production",
+      locations: { create: { locationId: o.locationId } },
+    },
+  });
+  await prisma.item.create({
+    data: {
+      ...o.item,
+      organizationId,
+      campusId: o.north.id,
+      locationId: o.locationId,
+      departmentId: o.departmentId,
+      categoryId: org.categories[0].id,
+      conditionId: org.itemConditions[0].id,
+    },
+  });
+
+  const people = [
+    [o.admin, "Signal Admin", { level: "ADMIN", scopeType: "ORGANIZATION" }],
+    [o.editor, "Signal Editor", { level: "EDITOR", scopeType: "CAMPUS", campusId: o.north.id }],
+    [o.optedOut, "Quiet Editor", { level: "EDITOR", scopeType: "CAMPUS", campusId: o.north.id }],
+    [
+      o.reporter,
+      "Signal Reporter",
+      { level: "COMMENTER", scopeType: "CAMPUS", campusId: o.north.id },
+    ],
+    [o.southEditor, "South Editor", { level: "EDITOR", scopeType: "CAMPUS", campusId: o.south.id }],
+  ] as const;
+  for (const [account, displayName, grant] of people) {
+    await prisma.user.create({
+      data: {
+        organizationId,
+        username: account.username,
+        passwordHash: await hash(account.password),
+        displayName,
+        email: `${account.username}@example.com`,
+        grants: { create: { organizationId, ...grant } },
+        ...(account === o.optedOut ? { preference: { create: { emailTicketOpened: false } } } : {}),
+      },
+    });
+  }
 }
