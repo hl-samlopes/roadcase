@@ -3,6 +3,8 @@ import {
   E2E_BUCKET,
   E2E_DATABASE_URL,
   E2E_SECRETS_KEY,
+  FAKE_GOOGLE_CLIENT,
+  FAKE_GOOGLE_URL,
   FAKE_SLACK_URL,
 } from "./tests/e2e/fixtures.ts";
 
@@ -39,6 +41,10 @@ export default defineConfig({
       // Saving Slack webhooks: the worker gets the same key (global setup).
       SECRETS_ENCRYPTION_KEY: E2E_SECRETS_KEY,
       SLACK_WEBHOOK_TEST_ORIGINS: FAKE_SLACK_URL,
+      // Google sign-in against the stand-in from global setup (fake-google.ts).
+      AUTH_GOOGLE_ID: FAKE_GOOGLE_CLIENT.id,
+      AUTH_GOOGLE_SECRET: FAKE_GOOGLE_CLIENT.secret,
+      AUTH_GOOGLE_ISSUER: FAKE_GOOGLE_URL,
     },
   },
 });

@@ -64,6 +64,12 @@ const sections = [
     organizationAdminOnly: false,
   },
   {
+    href: "/settings/sign-in",
+    title: "Sign-in",
+    description: "Google sign-in, its allowed domains, and who can still use a password.",
+    organizationAdminOnly: true,
+  },
+  {
     href: "/settings/appearance",
     title: "Appearance",
     description: "Organization colors, fonts, logos and sign-in page.",

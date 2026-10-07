@@ -8,7 +8,7 @@ export async function signIn(
   await page.goto(organizationSlug ? `/sign-in/${organizationSlug}` : "/sign-in");
   await page.getByLabel("Username").fill(account.username);
   await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/items$/);
 }
 

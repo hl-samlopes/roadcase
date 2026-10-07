@@ -105,15 +105,23 @@ enum SignInLogoPlacement {
 // ---------------------------------------------------------------------------
 
 model Organization {
-  id               String   @id @default(uuid(7)) @db.Uuid
-  name             String
-  slug             String   @unique
+  id                   String   @id @default(uuid(7)) @db.Uuid
+  name                 String
+  slug                 String   @unique
   /// Last service ticket number issued (#1, #2, ...); incremented atomically.
-  ticketSequence   Int      @default(0)
+  ticketSequence       Int      @default(0)
   /// Last check-out number issued; incremented atomically.
-  checkoutSequence Int      @default(0)
-  createdAt        DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  checkoutSequence     Int      @default(0)
+  /// Google Workspace domains (lowercase) whose verified accounts may sign in
+  /// with Google. Google sign-in is off while this is empty.
+  googleAllowedDomains String[] @default([])
+  /// Whether username and password sign-in works for everyone.
+  passwordSignIn       Boolean  @default(true)
+  /// When passwordSignIn is off, organization admins can still use a password,
+  /// as a way back in if Google is unavailable.
+  adminPasswordSignIn  Boolean  @default(true)
+  createdAt            DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime @updatedAt @db.Timestamptz(3)
 
   branding                 OrganizationBranding?
   campuses                 Campus[]
@@ -241,25 +249,31 @@ model DepartmentLocation {
 // ---------------------------------------------------------------------------
 
 model User {
-  id                String    @id @default(uuid(7)) @db.Uuid
-  organizationId    String    @db.Uuid
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  organizationId     String    @db.Uuid
   /// Stored lowercase; unique within the organization.
-  username          String
+  username           String
   /// argon2id hash. Never log or return this.
-  passwordHash      String
-  displayName       String
+  passwordHash       String
+  displayName        String
   /// Stored lowercase.
-  email             String
+  email              String
   /// Job title or role description. Access comes only from permission grants.
-  role              String?
-  isActive          Boolean   @default(true)
+  role               String?
+  isActive           Boolean   @default(true)
   /// Bumped on password change, reset or deactivation; sessions issued with an
   /// older value are rejected.
-  sessionVersion    Int       @default(0)
-  passwordChangedAt DateTime? @db.Timestamptz(3)
-  lastSignInAt      DateTime? @db.Timestamptz(3)
-  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+  sessionVersion     Int       @default(0)
+  passwordChangedAt  DateTime? @db.Timestamptz(3)
+  lastSignInAt       DateTime? @db.Timestamptz(3)
+  /// Google's stable account id ("sub"), linked on the first Google sign-in.
+  /// Later Google sign-ins must come from this account until an admin unlinks it.
+  googleSubject      String?
+  /// The Google account's email at its last sign-in (lowercase), for display.
+  googleEmail        String?
+  googleLastSignInAt DateTime? @db.Timestamptz(3)
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
 
   organization                  Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   preference                    UserPreference?
@@ -290,6 +304,7 @@ model User {
 
   @@unique([organizationId, username])
   @@unique([organizationId, email])
+  @@unique([organizationId, googleSubject])
 }
 
 /// A permission level granted for one scope. Exactly one scope id matches the

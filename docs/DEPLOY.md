@@ -94,6 +94,24 @@ For the first deploy only, also add these to the **web** service:
 6. Upload a logo in **Settings > Appearance**, and check it shows on the sign-in page in a private window.
 7. Add people in **Settings > Users** with the right grants, then send them the address.
 
+## Google sign-in (optional)
+
+Google sign-in needs an OAuth client from a Google Cloud project, ideally one owned by the Google Workspace (for example Hume's), so its admins can manage it.
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), choose or create a project.
+2. Go to **APIs & Services > OAuth consent screen**. Choose **Internal**, so only accounts in your Workspace can use it. The app name and support email are what people see on Google's screen.
+3. Go to **APIs & Services > Credentials > Create credentials > OAuth client ID**. Choose **Web application**, and add this **Authorized redirect URI**: `<APP_URL>/api/auth/callback/google`, for example `https://roadcase-production.up.railway.app/api/auth/callback/google`. If the address changes, add the new one here too.
+4. On the **web** service in Railway, add:
+
+| Variable | Value |
+| --- | --- |
+| `AUTH_GOOGLE_ID` | The client ID |
+| `AUTH_GOOGLE_SECRET` | The client secret |
+
+5. After the deploy, an organization admin lists the allowed domains in **Settings > Sign-in**. The "Sign in with Google" button appears on the sign-in page then.
+
+Google sign-in never creates accounts: it signs in an existing, active account whose email matches the verified Google email. Add people in **Settings > Users** first. Passwords keep working until an admin turns them off in Settings > Sign-in; organization admins keep theirs by default, as a way in if Google is down.
+
 ## Updating
 
 Merging into `main` redeploys both services. Migrations run before the new web version takes traffic. The worker restarts on the new image a moment later, and its jobs retry, so nothing is lost while it does.

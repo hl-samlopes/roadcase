@@ -18,6 +18,7 @@ import { addDefaultBandPositions, seed } from "../../prisma/seed/run.ts";
 import { appTimeZone, dateInZone } from "../../src/lib/checkouts/overdue.ts";
 import { placeholderTemplate } from "../../src/lib/contracts/placeholder.ts";
 import { hashPortalToken } from "../../src/lib/portal/token.ts";
+import { startFakeGoogle } from "./fake-google.ts";
 import {
   accounts,
   appearanceOrganization,
@@ -28,6 +29,7 @@ import {
   E2E_DATABASE_URL,
   E2E_SECRETS_KEY,
   FAKE_SLACK_URL,
+  googleOrganization,
   harborOrganization,
   MAILPIT_URL,
   notifyOrganization,
@@ -91,14 +93,17 @@ export default async function globalSetup() {
     await loadNotifyOrganization(prisma);
     await loadHarborOrganization(prisma);
     await loadPortalOrganization(prisma);
+    await loadGoogleOrganization(prisma);
   } finally {
     await prisma.$disconnect();
   }
 
   const stopSlack = await startFakeSlack();
+  const stopGoogle = await startFakeGoogle();
   const stopWorker = await startWorker();
   return async () => {
     await stopWorker();
+    await stopGoogle();
     await stopSlack();
   };
 }
@@ -624,6 +629,39 @@ async function loadNotifyOrganization(prisma: PrismaClient) {
       },
     },
   });
+}
+
+/** Ridge Camps: an organization admin and two campus editors, for Google sign-in. */
+async function loadGoogleOrganization(prisma: PrismaClient) {
+  const o = googleOrganization;
+  const org = await prisma.organization.create({
+    data: {
+      slug: o.slug,
+      name: o.name,
+      branding: { create: {} },
+      campuses: { create: { id: o.campus.id, code: o.campus.code, name: o.campus.name } },
+      categories: { create: { name: "Audio" } },
+      itemConditions: { create: { label: "Good", isDefault: true, position: 0 } },
+    },
+  });
+  const organizationId = org.id;
+  const user = async (
+    account: { username: string; password: string; email: string },
+    grant: { level: "ADMIN" | "EDITOR"; scopeType: "ORGANIZATION" | "CAMPUS"; campusId?: string },
+  ) =>
+    prisma.user.create({
+      data: {
+        organizationId,
+        username: account.username,
+        passwordHash: await hash(account.password),
+        displayName: account.username,
+        email: account.email,
+        grants: { create: { organizationId, ...grant } },
+      },
+    });
+  await user(o.admin, { level: "ADMIN", scopeType: "ORGANIZATION" });
+  await user(o.staff, { level: "EDITOR", scopeType: "CAMPUS", campusId: o.campus.id });
+  await user(o.leaving, { level: "EDITOR", scopeType: "CAMPUS", campusId: o.campus.id });
 }
 
 /** Harbor Camps: two check-outs that are out, one to check in and one overdue. */

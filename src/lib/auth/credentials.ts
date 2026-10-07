@@ -1,6 +1,8 @@
 import "server-only";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { signInMethods } from "./google";
+import { passwordSignInAllowed } from "./google-policy";
 import { hashPassword, verifyPassword } from "./password";
 import { clearThrottle, isThrottled, recordFailure, throttleKeys } from "./throttle";
 import { accountKey, addressKey } from "./throttle-policy";
@@ -28,6 +30,8 @@ export type CredentialsResult =
  * Checks a username and password, without saying which part was wrong.
  * Repeated failures lock the username, and the client address, for a while;
  * unknown usernames lock the same way, so locks don't reveal which exist.
+ * A right password fails the same way when the organization has turned
+ * passwords off for this account (Settings > Sign-in).
  */
 export async function verifyCredentials(
   input: unknown,
@@ -51,6 +55,14 @@ export async function verifyCredentials(
       passwordHash: true,
       isActive: true,
       sessionVersion: true,
+      organization: {
+        select: { googleAllowedDomains: true, passwordSignIn: true, adminPasswordSignIn: true },
+      },
+      grants: {
+        where: { level: "ADMIN", scopeType: "ORGANIZATION" },
+        select: { id: true },
+        take: 1,
+      },
     },
   });
 
@@ -58,7 +70,11 @@ export async function verifyCredentials(
     user?.isActive ? user.passwordHash : null,
     password,
   );
-  if (!user || !valid) {
+  if (
+    !user ||
+    !valid ||
+    !passwordSignInAllowed(signInMethods(user.organization), user.grants.length > 0)
+  ) {
     await recordFailure(keys);
     return { status: "invalid" };
   }

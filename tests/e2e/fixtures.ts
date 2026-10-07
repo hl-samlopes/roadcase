@@ -21,6 +21,10 @@ export const E2E_SECRETS_KEY = Buffer.alloc(32, 7).toString("base64");
 /** A stand-in for Slack that records what was posted; global setup runs it. */
 export const FAKE_SLACK_URL = "http://localhost:3199";
 
+/** A stand-in for Google's sign-in (see fake-google.ts); the dev server uses it as Google's issuer. */
+export const FAKE_GOOGLE_URL = "http://localhost:3198";
+export const FAKE_GOOGLE_CLIENT = { id: "e2e-google-client", secret: "e2e-google-secret" };
+
 export const ids = {
   meadowRanch: "0190a000-0000-7000-8000-000000000001",
   hneMain: "0190a000-0000-7000-8000-000000000002",
@@ -242,4 +246,21 @@ export const portalOrganization = {
   /** The main photo of one SM58 (shown) and of a Lighting item (never shown). */
   sm58PhotoId: "0190a000-0000-7000-8000-000000000069",
   hiddenPhotoId: "0190a000-0000-7000-8000-00000000006a",
+};
+
+/**
+ * Ridge Camps: Google sign-in. Its spec turns Google on, then passwords off,
+ * so nothing else signs in here. Everyone's email is in ridge.test.
+ */
+export const googleOrganization = {
+  slug: "ridge",
+  name: "Ridge Camps",
+  domain: "ridge.test",
+  campus: { id: "0190a000-0000-7000-8000-000000000071", code: "RDG", name: "Ridge" },
+  /** Organization admin; keeps a password when everyone else's is off. */
+  admin: { username: "rg-admin", password: "e2e-rg-admin-pass-1", email: "admin@ridge.test" },
+  /** Campus editor who signs in with Google. */
+  staff: { username: "rg-staff", password: "e2e-rg-staff-pass-1", email: "pat@ridge.test" },
+  /** Signs in with Google, then gets deactivated. */
+  leaving: { username: "rg-leaving", password: "e2e-rg-leaving-pass-1", email: "sam@ridge.test" },
 };
