@@ -21,6 +21,7 @@ import {
   removeGrantAction,
   resetPasswordAction,
   setActiveAction,
+  unlinkGoogleAction,
   unlockSignInAction,
   updateProfileAction,
 } from "../actions";
@@ -33,7 +34,7 @@ export default async function ManageUserPage({
 }: PageProps<"/settings/users/[id]">) {
   const actor = await requireUser();
   const { id } = await params;
-  const { created } = await searchParams;
+  const { created, unlinked } = await searchParams;
   if (!z.uuid().safeParse(id).success) notFound();
 
   const user = await db.user.findFirst({
@@ -47,6 +48,8 @@ export default async function ManageUserPage({
       role: true,
       isActive: true,
       lastSignInAt: true,
+      googleEmail: true,
+      googleLastSignInAt: true,
       grants: { select: grantDetailSelect, orderBy: { createdAt: "asc" } },
     },
   });
@@ -77,6 +80,11 @@ export default async function ManageUserPage({
       {created === "1" ? (
         <p role="status" className="rounded-theme border-border bg-surface border p-2">
           Done: account created.
+        </p>
+      ) : null}
+      {unlinked === "1" ? (
+        <p role="status" className="rounded-theme border-border bg-surface border p-2">
+          Done: Google account unlinked. The user has been signed out everywhere.
         </p>
       ) : null}
       <p className="text-muted">
@@ -173,6 +181,26 @@ export default async function ManageUserPage({
           <GrantFields scopeOptions={scopeOptions} />
         </ActionForm>
       </Card>
+
+      {user.googleEmail ? (
+        <Card title="Google account">
+          <p className="mb-3">
+            Signs in with Google as <span className="font-semibold">{user.googleEmail}</span>, last
+            on {user.googleLastSignInAt?.toLocaleString("en-US") ?? "an unknown date"}.
+          </p>
+          <ActionForm
+            action={unlinkGoogleAction.bind(null, user.id)}
+            submitLabel="Unlink Google account"
+            pendingLabel="Unlinking…"
+            variant="secondary"
+          >
+            <p className="text-muted">
+              Signs the user out everywhere. Their next Google sign-in links the account that
+              matches their email.
+            </p>
+          </ActionForm>
+        </Card>
+      ) : null}
 
       <Card title="Reset password">
         <ActionForm

@@ -2,13 +2,18 @@ import type { Metadata } from "next";
 import { ActionForm } from "@/components/action-form";
 import { Card, PageHeader, TextField } from "@/components/ui";
 import { requireUser } from "@/lib/authz";
+import { db } from "@/lib/db";
 import { changePasswordAction } from "./actions";
 
 export const metadata: Metadata = { title: "Change password" };
 
 export default async function ChangePasswordPage({ searchParams }: PageProps<"/account/password">) {
-  await requireUser();
+  const user = await requireUser();
   const { changed } = await searchParams;
+  const google = await db.user.findUniqueOrThrow({
+    where: { id: user.id },
+    select: { googleEmail: true, googleLastSignInAt: true },
+  });
 
   return (
     <div className="max-w-md">
@@ -54,6 +59,17 @@ export default async function ChangePasswordPage({ searchParams }: PageProps<"/a
           />
         </ActionForm>
       </Card>
+      {google.googleEmail ? (
+        <div className="mt-4">
+          <Card title="Google account">
+            <p>
+              You sign in with Google as <span className="font-semibold">{google.googleEmail}</span>
+              , last on {google.googleLastSignInAt?.toLocaleString("en-US") ?? "an unknown date"}.
+              To use a different Google account, ask an admin to unlink this one.
+            </p>
+          </Card>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -36,6 +36,8 @@ These come from `docs/SCOPE.md` and from building Phases 1 to 3. Each lists the 
 
 ## Step 0: Google sign-in
 
+Status: built on `phase4/step0` with the defaults above (no answers yet). Setup for a deployment is in `docs/DEPLOY.md` under "Google sign-in".
+
 - Add the Google provider to Auth.js alongside username and password.
 - **Who can sign in:**
   - Google's email must be verified and in one of the organization's allowed domains (Google's `hd` claim).

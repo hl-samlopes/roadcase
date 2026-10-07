@@ -28,9 +28,17 @@ export default async function OrganizationSignInPage({
   params,
   searchParams,
 }: PageProps<"/sign-in/[organization]">) {
-  const destination = safeCallbackUrl((await searchParams).callbackUrl);
+  const { callbackUrl, error } = await searchParams;
+  const destination = safeCallbackUrl(callbackUrl);
   if (await getCurrentUser()) redirect(destination);
 
   const { organization, branding } = await load((await params).organization);
-  return <SignInScreen organization={organization} branding={branding} callbackUrl={destination} />;
+  return (
+    <SignInScreen
+      organization={organization}
+      branding={branding}
+      callbackUrl={destination}
+      error={typeof error === "string" ? error : undefined}
+    />
+  );
 }

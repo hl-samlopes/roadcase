@@ -344,6 +344,33 @@ export async function removeGrantAction(
 }
 
 /** Lifts a sign-in lock caused by too many failed attempts. */
+/**
+ * Unlinks the user's Google account and signs them out everywhere. Their next
+ * Google sign-in links whichever allowed account matches their email.
+ */
+export async function unlinkGoogleAction(
+  userId: string,
+  _state: FormState,
+  _formData: FormData,
+): Promise<FormState> {
+  const actor = await requireUser();
+  const target = await manageableUser(actor, userId);
+  if (!target) return NOT_ALLOWED;
+  await db.user.update({
+    where: { id: target.id },
+    data: {
+      googleSubject: null,
+      googleEmail: null,
+      googleLastSignInAt: null,
+      sessionVersion: { increment: 1 },
+    },
+  });
+  if (target.id === actor.id) redirect("/sign-in");
+  refresh(target.id);
+  // The Google account card goes away, so confirm on the page instead.
+  redirect(`/settings/users/${target.id}?unlinked=1`);
+}
+
 export async function unlockSignInAction(
   userId: string,
   _state: FormState,
