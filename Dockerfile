@@ -1,6 +1,6 @@
 # One image for both Railway services: the web app (`npm run start`) and the
 # background worker (`npm run worker`). Each service sets its own start
-# command (railway/web.json, railway/worker.json).
+# command in its Railway settings (see docs/DEPLOY.md).
 
 FROM node:24-slim AS deps
 WORKDIR /app

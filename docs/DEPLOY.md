@@ -10,7 +10,7 @@ Roadcase runs on Railway, with these pieces:
 | Files | Cloudflare R2 (private bucket) |
 | Email | Resend |
 
-Both Railway services build from the same `Dockerfile`; only the start command differs (`railway/web.json` and `railway/worker.json`). Before the web service goes live, `railway/predeploy.sh` applies database migrations. When `SEED_ADMIN_PASSWORD` is set, it also runs the seed, which is safe to rerun.
+Both Railway services build from the same `Dockerfile`; only the start command differs, set in each service's settings. Before the web service goes live, its pre-deploy command, `railway/predeploy.sh`, applies database migrations. When `SEED_ADMIN_PASSWORD` is set, it also runs the seed, which is safe to rerun.
 
 Production starts empty: nothing from your laptop's database comes along. The seed creates the organization, the campuses, the first admin, default categories, conditions and band positions.
 
@@ -40,10 +40,17 @@ GitHub then shows the Phase 1 pull request as merged. From here on, merge work i
 
 1. Create a project, then add **PostgreSQL**. In the database's settings, turn on backups.
 2. Add a service from this GitHub repository and name it `web`.
-   - **Settings > Config-as-code:** set the path to `railway/web.json`.
+   - **Settings > Deploy:** set these (Railway's config-as-code files are deprecated, so they're set here):
+
+     | Setting | Value |
+     | --- | --- |
+     | Custom start command | `npm run start` |
+     | Pre-deploy command | `sh ./railway/predeploy.sh` |
+     | Healthcheck path | `/api/health` |
+     | Restart policy | On failure |
    - **Settings > Networking:** click **Generate Domain**. The address, for example `https://roadcase-production.up.railway.app`, is your `APP_URL`.
 3. Add a second service from the same repository and name it `worker`.
-   - Set its config-as-code path to `railway/worker.json`.
+   - **Settings > Deploy:** set the custom start command to `npm run worker`, the restart policy to Always, and leave the pre-deploy command and healthcheck path empty.
    - Give it no public domain.
 4. In **Project Settings > Shared Variables**, add the variables below, then share them with both services.
 
